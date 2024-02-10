@@ -1,0 +1,7 @@
+[report]
+omit =
+    setup.py
+    medpro/__main__.py
+    medpro/_version.py
+    versioneer.py
+    tests/*
