@@ -44,6 +44,7 @@ nosetests.xml
 coverage.xml
 *,cover
 .hypothesis/
+junit.xml
 
 # Translations
 *.mo
@@ -60,5 +61,3 @@ target/
 
 # pyenv python configuration file
 .python-version
-
-junit.xml
