@@ -159,4 +159,15 @@ class MEDFilePost():
         self.params_by_name = {}
         if self.file_data.getNumberOfParams() >= 1: # to avoid MEDLoader.InterpKernelException: MEDFileParameters::getParamAtPos : should be in [0,0)
             for param in self.file_data.getParams():
-                self.fields_by_name[param.getName()] = MEDParam(param)            
+                self.fields_by_name[param.getName()] = MEDParam(param)
+
+    def write(self, output_file_name):
+        for mesh_index, mesh in enumerate(self.meshes_by_name.values()):
+            if mesh_index == 0:
+                mesh.mesh_file.write(output_file_name,2)
+            else:
+                mesh.mesh_file.write(output_file_name,0)
+        for fieldevol in self.fieldevols_by_name.values():
+            fieldevol.file_field.write(output_file_name,0)
+        for param in self.params_by_name.values():
+            param.param.write(output_file_name,0)       

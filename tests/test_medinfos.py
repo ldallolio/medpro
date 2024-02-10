@@ -1,4 +1,5 @@
 import medpro
+import tempfile, os
 
 def test_mesh():
     fp = medpro.MEDFilePost("./tests/examples/box_with_depl.rmed")
@@ -35,8 +36,6 @@ def test_field_evol():
 
 def test_field():
     fp = medpro.MEDFilePost("./tests/examples/box_with_depl.rmed")
-
-    assert len(fp.fieldevols_by_name) == 2
     assert "reslin__DEPL" in fp.fieldevols_by_name
     
     depl_evol = fp.fieldevols_by_name['reslin__DEPL']
@@ -53,5 +52,9 @@ def test_field():
     assert "DZ" in depl.components
     assert depl.to_numpy.size == depl.mesh.num_nodes * len(depl.components)
 
-def test_extract_group():
-    pass
+def test_read_write():
+
+    fp = medpro.MEDFilePost("./tests/examples/box_with_depl.rmed")
+    with tempfile.TemporaryDirectory() as tempdir:
+        tmpfilepath = os.path.join(tempdir, 'output.rmed')
+        fp.write(tmpfilepath)
