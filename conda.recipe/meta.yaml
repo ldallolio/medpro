@@ -28,9 +28,10 @@ requirements:
   run:
     - python
     # dependencies are defined in setup.py
-    {% for dep in data['install_requires'] %}
-    - {{ dep.lower() }}
-    {% endfor %}
+    # LD disabling this because medcoupling has not yet a conda package
+    #{% for dep in data['install_requires'] %}
+    #- {{ dep.lower() }}
+    #{% endfor %}
 
 test:
   source_files:
