@@ -15,6 +15,7 @@ setup(
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     description="Medcoupling based post processing tools",
+    long_description=long_description,
     license="MIT",
     author="Luca Dall Olio",
     author_email='luca.dallolio@gmail.com',
