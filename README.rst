@@ -16,6 +16,7 @@ Medcoupling based post processing tools
 This project has been created to simplify the manipulation of `MED <https://docs.salome-platform.org/latest/dev/MEDCoupling/developer/med-file.html>`_ files.
 
 Code examples::
+   import medpro
 
    # Read a med file, extract mesh, field, group information
    fp = medpro.MEDFilePost("./tests/examples/box_with_depl.rmed")

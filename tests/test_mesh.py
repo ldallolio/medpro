@@ -18,3 +18,7 @@ def test_mesh():
     assert list(g1.cell_ids) == [3, 4]
     assert list(g1.cell_numbers) == [52, 53]
     assert list(g1.to_profile().node_ids) == [1, 6, 8, 11, 13, 14, 16, 19, 20, 21, 22, 23, 24, 25, 26]
+
+    assert len(mesh.get_cell_ids_in_boundingbox(0., 0., 0., 41., 101., 141.)) == 2
+    assert mesh.get_cell_id_containing_point(75., 50., 75.) == 5
+    assert len(mesh.get_node_ids_of_cell(5)) == 8

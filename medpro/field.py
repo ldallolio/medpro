@@ -2,6 +2,9 @@ from dataclasses import dataclass
 
 import medcoupling as mc
 
+from typing import List
+import numpy.typing
+
 
 @dataclass(frozen=True)
 class TimeStamp:
@@ -11,45 +14,49 @@ class TimeStamp:
 
 
 class MEDField:
-    def __init__(self, mesh_file, field):
+    def __init__(self, mesh_file, field, profile = None):
         self.mesh = mesh_file
         self.field = field
+        self.profile = profile
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.field.getName()
 
     @property
-    def on_nodes(self):
+    def on_nodes(self) -> bool:
         return self.field.getTypeOfField() == mc.ON_NODES
 
     @property
-    def on_cells(self):
+    def on_cells(self) -> bool:
         return self.field.getTypeOfField() == mc.ON_CELLS
 
     @property
-    def on_gauss_points(self):
+    def on_gauss_points(self) -> bool:
         return self.field.getTypeOfField() == mc.ON_GAUSS_PT
 
     @property
-    def on_nodes_per_element(self):
+    def on_nodes_per_element(self) -> bool:
         return self.field.getTypeOfField() == mc.ON_GAUSS_NE
 
     @property
-    def timestamp(self):
+    def timestamp(self) -> TimeStamp:
         time, iteration, order = self.field.getTime()
         return TimeStamp(iteration, order, time)
+    
+    def set_timestamp(self, iteration : int, order : int, time : float) -> None:
+        self.field.setTime(time, iteration, order)
 
     @property
-    def components(self):
+    def components(self) -> List[str]:
         return self.field.getArray().getInfoOnComponents()
 
     @property
-    def units(self):
+    def units(self) -> List[str]:
         return self.field.getArray().getUnitsOnComponents()
 
     @property
-    def to_numpy(self):
+    def to_numpy(self) -> numpy.typing.NDArray:
         return self.field.getArray().toNumPyArray()
 
     def extract_group(self, group_name):
@@ -57,38 +64,32 @@ class MEDField:
         subfield = self.field.buildSubPart(group.cell_ids_array)
         return MEDField(self.mesh, subfield)
 
-
 class MEDFieldEvol:
-    def __init__(self, mesh, file_field):
+    def __init__(self, mesh, file_field, profile = None):
         self.mesh = mesh
         self.file_field = file_field
+        self.profile = profile
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self.file_field.getName()
 
     @property
-    def components(self):
+    def components(self) -> List[str]:
         return self.file_field.getInfo()
 
     @property
-    def profile_names(self):
-        return self.file_field.getPfls()
+    def profile_by_name(self):
+        return {self.getProfile(profile_name) for profile_name in self.file_field.getPfls()}
 
     @property
-    def profiles(self):
-        return [self.getProfile(profile_name) for profile_name in self.profile_names]
-
-    @property
-    def timesteps(self):
+    def timesteps(self) -> List[TimeStamp]:
         return [
             TimeStamp(iteration, order, time)
             for iteration, order, time in self.file_field.getTimeSteps()
         ]
 
     def __build_field(self, field_1ts):
-        assert len(self.file_field.getTypesOfFieldAvailable()) == 1
-        assert len(self.file_field.getTypesOfFieldAvailable()[0]) == 1
         field_type = self.file_field.getTypesOfFieldAvailable()[0][
             0
         ]  # TODO understand this and make it more general
@@ -118,7 +119,20 @@ class MEDFieldEvol:
             extracted_fieldevol.appendFieldProfile(
                 subfield.field, self.mesh.mesh_file, 0, group.to_profile().node_ids_array
             )
-        return MEDFieldEvol(self.mesh, extracted_fieldevol)
+        return MEDFieldEvol(self.mesh, extracted_fieldevol, group.to_profile())
+    
+    def add_field(self, med_field: MEDField):
+        print(self.file_field.getIterations())
+        print(type(med_field.field))
+        if med_field.timestamp in self.fields_by_timestep:
+            raise ValueError(f"Timestamp {med_field.timestamp} already present in field_evol")
+        if med_field.profile is None:
+            field_1ts=mc.MEDFileField1TS.New()
+            field_1ts.setFieldNoProfileSBT(med_field.field)
+            self.file_field.pushBackTimeStep(field_1ts)
+        else:
+            self.file_field.appendFieldProfile(med_field.field, self.mesh.mesh_file, 0, med_field.profile.node_ids_array)        
+        print(self.file_field.getIterations())
 
     @property
     def fields_by_timestep(self):

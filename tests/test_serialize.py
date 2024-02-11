@@ -27,4 +27,4 @@ def test_extract_group():
 
     with tempfile.TemporaryDirectory() as tempdir:
         tmpfilepath = os.path.join(tempdir, "output.rmed")
-        fpnew.write(tmpfilepath)       
+        fpnew.write(tmpfilepath)
