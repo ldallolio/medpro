@@ -5,6 +5,11 @@ requirements = [
     "medcoupling",
 ]
 
+# read the contents of your README file
+from pathlib import Path
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.rst").read_text()
+
 setup(
     name='medpro',
     version=versioneer.get_version(),
@@ -22,5 +27,5 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
-    ]
+    ],
 )
