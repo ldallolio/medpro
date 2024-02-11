@@ -1,11 +1,6 @@
 version: 2
 orbs:
   codecov: codecov/codecov@4.0.1
-workflows:
-  upload-to-codecov:
-    jobs:
-      - checkout 
-      - codecov/upload
 jobs:
   build:
     docker:
@@ -15,6 +10,10 @@ jobs:
 
     steps:
       - checkout
+      - run: pip install -r requirements.txt
+      - run: pip install -r requirements_dev.txt
+      - run: pytest --cov .      
+      - codecov/upload
 
       
       # - restore_cache:
@@ -52,3 +51,8 @@ jobs:
       - store_artifacts:
           path: test-reports
           destination: test-reports
+workflows:
+  upload-to-codecov:
+    jobs:
+      - checkout 
+      - codecov/upload
