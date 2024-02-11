@@ -5,9 +5,9 @@ medpro
 
 .. image:: https://img.shields.io/travis/ldallolio/medpro.svg
         :target: https://travis-ci.org/ldallolio/medpro
-.. image:: https://circleci.com/gh/ldallolio/medpro.svg?style=svg
-    :target: https://circleci.com/gh/ldallolio/medpro
-.. image:: https://codecov.io/gh/ldallolio/medpro/branch/master/graph/badge.svg
+.. image:: https://dl.circleci.com/status-badge/img/circleci/WNUnhGtn8hkFFgdqyBFUNy/K9xJ7WXEW7An7moFDpY1AX/tree/main.svg?style=svg
+        :target: https://dl.circleci.com/status-badge/redirect/circleci/WNUnhGtn8hkFFgdqyBFUNy/K9xJ7WXEW7An7moFDpY1AX/tree/main
+.. image:: https://codecov.io/gh/ldallolio/medpro/branch/main/graph/badge.svg
    :target: https://codecov.io/gh/ldallolio/medpro
 
 
