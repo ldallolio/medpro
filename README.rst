@@ -3,10 +3,8 @@ medpro
 ===============================
 
 
-.. image:: https://img.shields.io/travis/ldallolio/medpro.svg
-        :target: https://travis-ci.org/ldallolio/medpro
 .. image:: https://dl.circleci.com/status-badge/img/circleci/WNUnhGtn8hkFFgdqyBFUNy/K9xJ7WXEW7An7moFDpY1AX/tree/main.svg?style=svg
-        :target: https://dl.circleci.com/status-badge/redirect/circleci/WNUnhGtn8hkFFgdqyBFUNy/K9xJ7WXEW7An7moFDpY1AX/tree/main
+   :target: https://dl.circleci.com/status-badge/redirect/circleci/WNUnhGtn8hkFFgdqyBFUNy/K9xJ7WXEW7An7moFDpY1AX/tree/main
 .. image:: https://codecov.io/gh/ldallolio/medpro/branch/main/graph/badge.svg
    :target: https://codecov.io/gh/ldallolio/medpro
 
@@ -16,6 +14,7 @@ Medcoupling based post processing tools
 This project has been created to simplify the manipulation of `MED <https://docs.salome-platform.org/latest/dev/MEDCoupling/developer/med-file.html>`_ files.
 
 Code examples::
+   
    import medpro
 
    # Read a med file, extract mesh, field, group information

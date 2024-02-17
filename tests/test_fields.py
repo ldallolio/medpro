@@ -1,4 +1,5 @@
 import medpro
+import numpy as np
 
 
 def test_field_evol():
@@ -37,11 +38,14 @@ def test_field():
     assert "DX" in depl.components
     assert "DY" in depl.components
     assert "DZ" in depl.components
-    assert depl.to_numpy.size == depl.mesh.num_nodes * len(depl.components)
+    assert depl.to_numpy().size == depl.mesh.num_nodes * len(depl.components)
     depl.set_timestamp(2, 2, 0.0)
     depl_evol.add_field(depl)
     assert len(depl_evol.fields_by_timestep) == 2
-    
+    assert np.array_equal(depl.to_numpy() + depl.to_numpy(), (depl + depl).to_numpy())
+    assert np.array_equal(depl.to_numpy() * 3.15, (depl * 3.15).to_numpy())
+
+
 def test_extract_group():
     fp = medpro.MEDFilePost("./tests/examples/box_with_depl.rmed")
     assert "reslin__DEPL" in fp.fieldevols_by_name
@@ -58,4 +62,4 @@ def test_extract_group():
     assert "DX" in depl.components
     assert "DY" in depl.components
     assert "DZ" in depl.components
-    assert depl.to_numpy.size == 15 * len(depl.components)
+    assert depl.to_numpy().size == 15 * len(depl.components)

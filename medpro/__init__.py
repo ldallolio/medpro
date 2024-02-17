@@ -13,10 +13,12 @@ from typing import List, Dict
 class MEDFilePost():
 
     def __init__(self, file_name : str | None = None):
+        file_data : mc.MEDFileData
         if file_name is not None:
-            self.file_data = mc.MEDFileData.New(file_name)
+            file_data = mc.MEDFileData.New(file_name)
         else:
-            self.file_data = mc.MEDFileData.New()
+            file_data = mc.MEDFileData.New()
+        self.file_data = file_data
 
         self.meshes_by_name : Dict[str, MEDMesh] = {}
         if file_name is not None and self.file_data.getNumberOfMeshes() >= 1:
@@ -32,18 +34,18 @@ class MEDFilePost():
         self.params_by_name : Dict[str, MEDParam] = {}
         if file_name is not None and self.file_data.getNumberOfParams() >= 1: # to avoid MEDLoader.InterpKernelException: MEDFileParameters::getParamAtPos : should be in [0,0)
             for param in self.file_data.getParams():
-                self.fields_by_name[param.getName()] = MEDParam(param)
+                self.params_by_name[param.getName()] = MEDParam(param)
 
     def add_fieldevol(self, field_evol) -> None:
         self.fieldevols_by_name[field_evol.name] = field_evol
 
-    def write(self, output_file_name) -> None:
+    def write(self, output_file_name : str) -> None:
         for mesh_index, mesh in enumerate(self.meshes_by_name.values()):
             if mesh_index == 0:
                 mesh.mesh_file.write(output_file_name, 2)
             else:
                 mesh.mesh_file.write(output_file_name, 0)
         for fieldevol in self.fieldevols_by_name.values():
-            fieldevol.file_field.write(output_file_name, 0)
+            fieldevol.file_field_multits.write(output_file_name, 0)
         for param in self.params_by_name.values():
             param.param.write(output_file_name,0)       

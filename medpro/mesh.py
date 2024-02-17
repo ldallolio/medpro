@@ -3,17 +3,21 @@ import medcoupling as mc
 import numpy.typing
 from typing import Dict, List
 
+
 class MEDProfile:
-    def __init__(self, mesh, node_ids_array):
+    def __init__(self, mesh, node_ids_array: mc.DataArrayInt):
         self.mesh = mesh
         self.node_ids_array = node_ids_array
 
     @property
     def node_ids(self) -> numpy.typing.NDArray:
-        return self.node_ids_array.toNumPyArray()        
+        return self.node_ids_array.toNumPyArray()
+
 
 class MEDGroup:
-    def __init__(self, mesh, cell_ids_array, cell_numbers_array):
+    def __init__(
+        self, mesh, cell_ids_array: mc.DataArrayInt, cell_numbers_array: mc.DataArrayInt
+    ):
         self.mesh = mesh
         self.cell_ids_array = cell_ids_array
         self.cell_numbers_array = cell_numbers_array
@@ -29,18 +33,20 @@ class MEDGroup:
     @property
     def cell_numbers(self) -> numpy.typing.NDArray:
         return self.cell_numbers_array.toNumPyArray()
-    
+
     def to_profile(self) -> MEDProfile:
-        whole_mesh = self.mesh.mesh_file.getMeshAtLevel(0)
-        submesh_group = whole_mesh[self.cell_ids_array]
+        whole_mesh: mc.MEDCouplingMesh = self.mesh.mesh_file.getMeshAtLevel(0)
+        submesh_group: mc.MEDCouplingMesh = whole_mesh[self.cell_ids_array]
+        group_ids_new: mc.DataArrayInt
+        new_num_group_ids: int
         group_ids_new, new_num_group_ids = submesh_group.getNodeIdsInUse()
-        profile_array = group_ids_new.invertArrayO2N2N2O(new_num_group_ids)
+        profile_array: mc.DataArrayInt = group_ids_new.invertArrayO2N2N2O(new_num_group_ids)
         profile_array.setName(self.name)
         return MEDProfile(self.mesh, profile_array)
 
 
 class MEDMesh:
-    def __init__(self, mesh_file):
+    def __init__(self, mesh_file: mc.MEDFileMesh):
         self.mesh_file = mesh_file
 
     @property
@@ -64,21 +70,32 @@ class MEDMesh:
         return self.mesh_file.getCoords().toNumPyArray()
 
     def get_group_by_name(self, group_name: str) -> MEDGroup:
-        ids = self.mesh_file.getGroupArr(0, group_name, False)
-        labels = self.mesh_file.getGroupArr(0, group_name, True)
+        ids: mc.DataArrayInt = self.mesh_file.getGroupArr(0, group_name, False)
+        labels: mc.DataArrayInt = self.mesh_file.getGroupArr(0, group_name, True)
         return MEDGroup(self, ids, labels)
-    
-    def get_cell_ids_in_boundingbox(self, x1, y1, z1, x2, y2, z2, tolerance = 1e-10) -> numpy.typing.NDArray:
-        wholemesh = self.mesh_file.getMeshAtLevel(0)
-        ids = wholemesh.getCellsInBoundingBox([x1, x2, y1, y2, z1, z2], tolerance)
+
+    def get_cell_ids_in_boundingbox(
+        self,
+        x1: float,
+        y1: float,
+        z1: float,
+        x2: float,
+        y2: float,
+        z2: float,
+        tolerance: float = 1e-10,
+    ) -> numpy.typing.NDArray:
+        wholemesh: mc.MEDCouplingMesh = self.mesh_file.getMeshAtLevel(0)
+        ids: mc.DataArrayInt = wholemesh.getCellsInBoundingBox(
+            [x1, x2, y1, y2, z1, z2], tolerance
+        )
         return ids.toNumPyArray()
-    
-    def get_cell_id_containing_point(self, x, y, z, tolerance = 1e-10) -> int:
-        wholemesh = self.mesh_file.getMeshAtLevel(0)
+
+    def get_cell_id_containing_point(self, x, y, z, tolerance=1e-10) -> int:
+        wholemesh: mc.MEDCouplingMesh = self.mesh_file.getMeshAtLevel(0)
         return wholemesh.getCellContainingPoint([x, y, z], tolerance)
 
     def get_node_ids_of_cell(self, cell_id) -> List[int]:
-        wholemesh = self.mesh_file.getMeshAtLevel(0)
+        wholemesh: mc.MEDCouplingMesh = self.mesh_file.getMeshAtLevel(0)
         return wholemesh.getNodeIdsOfCell(cell_id)
 
     @property
