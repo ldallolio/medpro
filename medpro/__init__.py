@@ -94,14 +94,4 @@ class MEDFilePost:
 
     def write(self, output_file_name: str) -> None:
         self.check()
-        for mesh_index, mesh in enumerate(self.meshes_by_name.values()):
-            if mesh_index == 0:
-                print(f"Writing mesh {mesh.name} to {output_file_name}")
-                mesh.mesh_file.write(output_file_name, 2)
-            else:
-                print(f"Appending mesh {mesh.name} to {output_file_name}")
-                mesh.mesh_file.write(output_file_name, 0)
-        #for fieldevol in self.fieldevols_by_name.values():
-        #    fieldevol.file_field_multits.write(output_file_name, 0)
-        #for param in self.params_by_name.values():
-        #    param.param.write(output_file_name, 0)
+        self.file_data.write33(output_file_name, 2)
