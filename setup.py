@@ -8,7 +8,7 @@ requirements = [
 # read the contents of your README file
 from pathlib import Path
 this_directory = Path(__file__).parent
-long_description = (this_directory / "README.rst").read_text()
+long_description = (this_directory / "README.md").read_text()
 
 setup(
     name='medpro',
@@ -16,6 +16,7 @@ setup(
     cmdclass=versioneer.get_cmdclass(),
     description="Medcoupling based post processing tools",
     long_description=long_description,
+    long_description_content_type='text/markdown',
     license="MIT",
     author="Luca Dall Olio",
     author_email='luca.dallolio@gmail.com',
@@ -23,7 +24,7 @@ setup(
     packages=['medpro'],
     
     install_requires=requirements,
-    keywords='medpro',
+    keywords=['medpro', 'medcoupling'],
     classifiers=[
         'Programming Language :: Python :: 3',
     ],

@@ -23,6 +23,7 @@ def test_extract_group():
     depl_evol = fp.fieldevols_by_name["reslin__DEPL"]
     depl_g1 = depl_evol.extract_group("G1")
     fpnew = medpro.MEDFilePost()
+    fpnew.add_mesh(fp.meshes_by_name["mesh"])
     fpnew.add_fieldevol(depl_g1)    
 
     with tempfile.TemporaryDirectory() as tempdir:

@@ -8,6 +8,7 @@ def test_mesh():
     assert "mesh" in fp.meshes_by_name
 
     mesh = fp.meshes_by_name["mesh"]
+    mesh.check()
     assert mesh.name == "mesh"
     assert "G1" in mesh.group_by_name
     assert mesh.num_nodes == 27
@@ -22,3 +23,8 @@ def test_mesh():
     assert len(mesh.get_cell_ids_in_boundingbox(0., 0., 0., 41., 101., 141.)) == 2
     assert mesh.get_cell_id_containing_point(75., 50., 75.) == 5
     assert len(mesh.get_node_ids_of_cell(5)) == 8
+
+    mesh.name = "mesh2"
+    assert mesh.name == "mesh2"
+    # assert "mesh2" in fp.meshes_by_name
+    # assert "mesh" not in fp.meshes_by_name

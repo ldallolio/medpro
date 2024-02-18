@@ -2,7 +2,8 @@ from dataclasses import dataclass
 
 import medcoupling as mc
 
-from typing import List, Dict
+from typing import List, Dict, Any
+from numpy.lib import recfunctions as rfn
 import numpy.typing
 
 from .mesh import MEDMesh, MEDProfile
@@ -16,19 +17,27 @@ class TimeStamp:
 
 
 class MEDField:
+    """Wrapper around MEDCoupling::MEDCouplingFieldDouble
+    https://docs.salome-platform.org/latest/dev/MEDCoupling/developer/classMEDCoupling_1_1MEDCouplingFieldDouble.html
+    """
+
     def __init__(
         self,
-        mesh_file: mc.MEDFileMesh,
+        mesh: MEDMesh,
         field_double: mc.MEDCouplingFieldDouble,
         profile: MEDProfile | None = None,
     ):
-        self.mesh = mesh_file
+        self.mesh = mesh
         self.field_double = field_double
         self.profile = profile
 
     @property
     def name(self) -> str:
         return self.field_double.getName()
+    
+    @name.setter
+    def name(self, value: str) -> None:
+        self.field_double.setName(value)    
 
     @property
     def on_nodes(self) -> bool:
@@ -64,47 +73,149 @@ class MEDField:
 
     def to_numpy(self) -> numpy.typing.NDArray:
         return self.field_double.getArray().toNumPyArray()
-    
-    def __add__(self, other):
+
+    def to_numpy_structured(self) -> numpy.typing.NDArray:
+        values = self.to_numpy()
+        return rfn.unstructured_to_structured(values, names = self.components, copy = False)
+
+    def __neg__(self):
+        return MEDField(self.mesh, self.field_double.negate(), self.profile)
+
+    def __add__(self, other: Any):
         field_sum: mc.MEDCouplingFieldDouble
         if isinstance(other, self.__class__):
             if self.mesh != other.mesh:
                 raise ValueError("Cannot add two fields on different meshes.")
             if self.profile != other.profile:
-                raise ValueError("Cannot add two fields on different profiles.")        
+                raise ValueError("Cannot add two fields on different profiles.")
             field_sum = self.field_double + other.field_double
             field_sum.setName(f"{self.name}_plus_{other.name}")
         elif isinstance(other, (int, float)):
             field_sum = self.field_double + other
         else:
-            raise TypeError("unsupported operand type(s) for +: '{}' and '{}'").format(self.__class__, type(other))        
+            raise TypeError(
+                "unsupported operand type(s) for +: '{}' and '{}'".format(
+                    self.__class__, type(other)
+                )
+            )
         return MEDField(self.mesh, field_sum, self.profile)
-    
+
     __radd__ = __add__
-    
-    def __mul__(self, other):
+
+    def __iadd__(self, other: Any):
+        if isinstance(other, self.__class__):
+            if self.mesh != other.mesh:
+                raise ValueError("Cannot add two fields on different meshes.")
+            if self.profile != other.profile:
+                raise ValueError("Cannot add two fields on different profiles.")
+            self.field_double += other.field_double
+        elif isinstance(other, (int, float)):
+            self.field_double += other
+        else:
+            raise TypeError(
+                "unsupported operand type(s) for +=: '{}' and '{}'".format(
+                    self.__class__, type(other)
+                )
+            )
+
+    def __sub__(self, other: Any):
+        field_sub: mc.MEDCouplingFieldDouble
+        if isinstance(other, self.__class__):
+            if self.mesh != other.mesh:
+                raise ValueError("Cannot subtract two fields on different meshes.")
+            if self.profile != other.profile:
+                raise ValueError("Cannot subtract two fields on different profiles.")
+            field_sub = self.field_double - other.field_double
+            field_sub.setName(f"{self.name}_minus_{other.name}")
+        elif isinstance(other, (int, float)):
+            field_sum = self.field_double - other
+        else:
+            raise TypeError(
+                "unsupported operand type(s) for -: '{}' and '{}'".format(
+                    self.__class__, type(other)
+                )
+            )
+        return MEDField(self.mesh, field_sum, self.profile)
+
+    def __rsub__(self, other: Any):
+        field_sub: mc.MEDCouplingFieldDouble
+        if isinstance(other, self.__class__):
+            if self.mesh != other.mesh:
+                raise ValueError("Cannot subtract two fields on different meshes.")
+            if self.profile != other.profile:
+                raise ValueError("Cannot subtract two fields on different profiles.")
+            field_sub = other.field_double - self.field_double
+            field_sub.setName(f"{self.name}_minus_{other.name}")
+        elif isinstance(other, (int, float)):
+            field_sum = self.field_double.negate() + other
+        else:
+            raise TypeError(
+                "unsupported operand type(s) for -: '{}' and '{}'".format(
+                    self.__class__, type(other)
+                )
+            )
+        return MEDField(self.mesh, field_sum, self.profile)
+
+    def __isub__(self, other: Any):
+        if isinstance(other, self.__class__):
+            if self.mesh != other.mesh:
+                raise ValueError("Cannot subtract two fields on different meshes.")
+            if self.profile != other.profile:
+                raise ValueError("Cannot subtract two fields on different profiles.")
+            self.field_double -= other.field_double
+        elif isinstance(other, (int, float)):
+            self.field_double -= other
+        else:
+            raise TypeError(
+                "unsupported operand type(s) for -=: '{}' and '{}'".format(
+                    self.__class__, type(other)
+                )
+            )
+
+    def __mul__(self, other: Any):
         field_mul: mc.MEDCouplingFieldDouble
         if isinstance(other, self.__class__):
             if self.mesh != other.mesh:
                 raise ValueError("Cannot multiply two fields on different meshes.")
             if self.profile != other.profile:
-                raise ValueError("Cannot multiply two fields on different profiles.")        
+                raise ValueError("Cannot multiply two fields on different profiles.")
             field_mul = self.field_double * other.field_double
             field_mul.setName(f"{self.name}_mul_{other.name}")
         elif isinstance(other, (int, float)):
             field_mul = self.field_double * other
         else:
-            raise TypeError("unsupported operand type(s) for *: '{}' and '{}'").format(self.__class__, type(other))        
+            raise TypeError(
+                "unsupported operand type(s) for *: '{}' and '{}'".format(
+                    self.__class__, type(other)
+                )
+            )
         return MEDField(self.mesh, field_mul, self.profile)
-    
+
     __rmul__ = __mul__
 
-    def __imul__(self, val: float):
-        self.field_double *= val
+    def __imul__(self, other: Any):
+        if isinstance(other, self.__class__):
+            if self.mesh != other.mesh:
+                raise ValueError("Cannot multiply two fields on different meshes.")
+            if self.profile != other.profile:
+                raise ValueError("Cannot multiply two fields on different profiles.")
+            self.field_double *= other.field_double
+        elif isinstance(other, (int, float)):
+            self.field_double *= other
+        else:
+            raise TypeError(
+                "unsupported operand type(s) for *: '{}' and '{}'".format(
+                    self.__class__, type(other)
+                )
+            )
 
-    def extract_group(self, group_name):
+    def extract_group(self, group_name: str):
         group = self.mesh.get_group_by_name(group_name)
+        # https://docs.salome-platform.org/latest/dev/MEDCoupling/tutorial/medcoupling_fielddouble1_en.html#builing-of-a-subpart-of-a-field
         subfield = self.field_double.buildSubPart(group.cell_ids_array)
+        #subfieldCpy=subfield.deepCopy()
+        #o2n=subfieldCpy.getMesh().sortCellsInMEDFileFrmt()
+        #subfieldCpy.getArray().renumberInPlace(o2n)        
         return MEDField(self.mesh, subfield)
 
 
@@ -122,6 +233,10 @@ class MEDFieldEvol:
     @property
     def name(self) -> str:
         return self.file_field_multits.getName()
+    
+    @name.setter
+    def name(self, value: str) -> None:
+        self.file_field_multits.setName(value)
 
     @property
     def components(self) -> List[str]:
@@ -130,7 +245,8 @@ class MEDFieldEvol:
     @property
     def profile_by_name(self):
         return {
-            self.getProfile(profile_name) for profile_name in self.file_field_multits.getPfls()
+            self.file_field_multits.getProfile(profile_name)
+            for profile_name in self.file_field_multits.getPfls()
         }
 
     @property
@@ -169,8 +285,8 @@ class MEDFieldEvol:
         group = self.mesh.get_group_by_name(group_name)
         extracted_fieldevol: mc.MEDFileFieldMultiTS = mc.MEDFileFieldMultiTS.New()
         extracted_fieldevol.setName(f"{self.name}_{group_name}")
-        for _, field_double in self.fields_by_timestep.items():
-            subfield: MEDField = field_double.extract_group(group_name)
+        for _, field in self.field_by_timestep.items():
+            subfield: MEDField = field.extract_group(group_name)
             extracted_fieldevol.appendFieldProfile(
                 subfield.field_double,
                 self.mesh.mesh_file,
@@ -180,9 +296,7 @@ class MEDFieldEvol:
         return MEDFieldEvol(self.mesh, extracted_fieldevol, group.to_profile())
 
     def add_field(self, med_field: MEDField):
-        print(self.file_field_multits.getIterations())
-        print(type(med_field.field_double))
-        if med_field.timestamp in self.fields_by_timestep:
+        if med_field.timestamp in self.field_by_timestep:
             raise ValueError(
                 f"Timestamp {med_field.timestamp} already present in field_evol"
             )
@@ -197,10 +311,9 @@ class MEDFieldEvol:
                 0,
                 med_field.profile.node_ids_array,
             )
-        print(self.file_field_multits.getIterations())
 
     @property
-    def fields_by_timestep(self) -> Dict[TimeStamp, MEDField]:
+    def field_by_timestep(self) -> Dict[TimeStamp, MEDField]:
         return {
             TimeStamp(*field_double.getTime()): self.__build_field(field_double)
             for field_double in self.file_field_multits

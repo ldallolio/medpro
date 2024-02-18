@@ -1,5 +1,6 @@
 from ._version import get_versions
-__version__ = get_versions()['version']
+
+__version__ = get_versions()["version"]
 del get_versions
 
 import medcoupling as mc
@@ -9,43 +10,98 @@ from .mesh import *
 from .param import *
 from .field import *
 from typing import List, Dict
+import traceback
 
-class MEDFilePost():
 
-    def __init__(self, file_name : str | None = None):
-        file_data : mc.MEDFileData
+class MEDFilePost:
+    """Wrapper around MEDCoupling::MEDFileData
+    https://docs.salome-platform.org/latest/dev/MEDCoupling/developer/classMEDCoupling_1_1MEDFileData.html
+    """
+
+    def __init__(self, file_name: str | None = None):
+        file_data: mc.MEDFileData
         if file_name is not None:
             file_data = mc.MEDFileData.New(file_name)
         else:
             file_data = mc.MEDFileData.New()
         self.file_data = file_data
 
-        self.meshes_by_name : Dict[str, MEDMesh] = {}
-        if file_name is not None and self.file_data.getNumberOfMeshes() >= 1:
-            for file_mesh in self.file_data.getMeshes():
-                self.meshes_by_name[file_mesh.getName()] = MEDMesh(file_mesh)
+    @property
+    def meshes_by_name(self) -> Dict[str, MEDMesh]:
+        try:
+            return (
+                {
+                    file_mesh.getName(): MEDMesh(file_mesh)
+                    for file_mesh in self.file_data.getMeshes()
+                }
+                if self.file_data.getNumberOfMeshes() >= 1
+                else {}
+            )
+        except mc.InterpKernelException:
+            return {}
 
-        self.fieldevols_by_name : Dict[str, MEDFieldEvol] = {}
-        if file_name is not None and self.file_data.getNumberOfFields() >= 1:
-            for field_file in self.file_data.getFields():
-                mesh = self.meshes_by_name[field_file.getMeshName()]
-                self.fieldevols_by_name[field_file.getName()] = MEDFieldEvol(mesh, field_file)
+    @property
+    def params_by_name(self) -> Dict[str, MEDParam]:
+        try:
+            return (
+                {
+                    param.getName(): MEDParam(param)
+                    for param in self.file_data.getParams()
+                }
+                if self.file_data.getNumberOfParams() >= 1
+                else {}
+            )
+        except mc.InterpKernelException:
+            return {}
 
-        self.params_by_name : Dict[str, MEDParam] = {}
-        if file_name is not None and self.file_data.getNumberOfParams() >= 1: # to avoid MEDLoader.InterpKernelException: MEDFileParameters::getParamAtPos : should be in [0,0)
-            for param in self.file_data.getParams():
-                self.params_by_name[param.getName()] = MEDParam(param)
+    @property
+    def fieldevols_by_name(self) -> Dict[str, MEDFieldEvol]:
+        meshes_by_name = self.meshes_by_name
+        try:
+            return (
+                {
+                    field_file.getName(): MEDFieldEvol(
+                        meshes_by_name[field_file.getMeshName()], field_file
+                    )
+                    for field_file in self.file_data.getFields()
+                }
+                if self.file_data.getNumberOfFields() >= 1
+                else {}
+            )
+        except mc.InterpKernelException:
+            return {}
+        
+    def add_mesh(self, mesh: MEDMesh) -> None:
+        meshes: mc.MEDFileMeshes | None = self.file_data.getMeshes()
+        if meshes is None:
+            meshes = mc.MEDFileMeshes.New()
+            self.file_data.setMeshes(meshes)
+        meshes.pushMesh(mesh.mesh_file)        
 
-    def add_fieldevol(self, field_evol) -> None:
-        self.fieldevols_by_name[field_evol.name] = field_evol
+    def add_fieldevol(self, field_evol: MEDFieldEvol) -> None:
+        fields: mc.MEDFileFields | None = self.file_data.getFields()
+        if fields is None:
+            fields = mc.MEDFileFields.New()
+            self.file_data.setFields(fields)
+        fields.pushField(field_evol.file_field_multits)
 
-    def write(self, output_file_name : str) -> None:
+    def check(self) -> None:
+        meshes_by_name = self.meshes_by_name
+        for mesh in meshes_by_name.values():
+            mesh.check()
+        for fieldevol in self.fieldevols_by_name.values():
+            assert fieldevol.file_field_multits.getMeshName() in meshes_by_name
+
+    def write(self, output_file_name: str) -> None:
+        self.check()
         for mesh_index, mesh in enumerate(self.meshes_by_name.values()):
             if mesh_index == 0:
+                print(f"Writing mesh {mesh.name} to {output_file_name}")
                 mesh.mesh_file.write(output_file_name, 2)
             else:
+                print(f"Appending mesh {mesh.name} to {output_file_name}")
                 mesh.mesh_file.write(output_file_name, 0)
-        for fieldevol in self.fieldevols_by_name.values():
-            fieldevol.file_field_multits.write(output_file_name, 0)
-        for param in self.params_by_name.values():
-            param.param.write(output_file_name,0)       
+        #for fieldevol in self.fieldevols_by_name.values():
+        #    fieldevol.file_field_multits.write(output_file_name, 0)
+        #for param in self.params_by_name.values():
+        #    param.param.write(output_file_name, 0)
