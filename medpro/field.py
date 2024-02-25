@@ -225,10 +225,28 @@ class MEDField:
         profile_nodeids_array = None
         print(f"{self.profile=}")
         print(f"{group.to_profile().node_ids_array=}")
+        print(f"{self.field_double.getMesh()=}")
+        print(f"{self.field_double=}")
         profile_nodeids_array = group.to_profile().node_ids_array
-        subfield = self.field_double.buildSubPart(group.cell_ids_array)
         print(f"{profile_nodeids_array=}")
-        print(f"{subfield=}")
+        try:
+            subfield = self.field_double.buildSubPart(group.cell_ids_array)
+        except:
+            subfield = self.field_double
+        # profile_cell_ids = self.field_double.getMesh().getCellIdsLyingOnNodes(self.profile.node_ids_array, fullyIn=True)
+        # print(f"{profile_cell_ids=}")
+        # for i in range(22):
+        #     try:
+        #         print(f"testing {i=}")
+        #         subfield2 = self.field_double.buildSubPart([i]) # group.cell_ids_array
+        #         print(f"passed {i=}")
+        #     except:
+        #         pass
+        # print(f"{profile_nodeids_array=}")
+        # print(f"{subfield=}")
+            
+
+        
         #else:
         #    whole_mesh: mc.MEDCouplingMesh = self.mesh.mesh_file.getMeshAtLevel(0)            
         #    profile_cell_ids = whole_mesh.getCellIdsLyingOnNodes(self.profile.node_ids_array, fullyIn=True)
@@ -308,12 +326,14 @@ class MEDFieldEvol:
         field_vals, field_prf = field_1ts.getFieldWithProfile(
             field_type, 0, self.mesh.mesh_file
         )
-
-        whole_mesh: mc.MEDCouplingMesh = self.mesh.mesh_file.getMeshAtLevel(0)
         double_field: mc.MEDCouplingFieldDouble = mc.MEDCouplingFieldDouble.New(
             field_type, mc.ONE_TIME
         )
         double_field.setName(field_1ts.getName())
+        whole_mesh: mc.MEDCouplingMesh = self.mesh.mesh_file.getMeshAtLevel(0)
+        profile_cell_ids = whole_mesh.getCellIdsLyingOnNodes(field_prf, fullyIn=True)
+        computed_mesh=whole_mesh[profile_cell_ids]
+        computed_mesh.setName(self.mesh.mesh_file.getName())
         profile_names = field_1ts.getPflsReallyUsed()
         if len(profile_names) == 1:
             field_prf.setName(profile_names[0])
@@ -324,7 +344,7 @@ class MEDFieldEvol:
         else:
             profile_name = f"PFL{field_1ts.getName()}"
             field_prf.setName(profile_name)
-        double_field.setMesh(whole_mesh)
+        double_field.setMesh(computed_mesh)
         double_field.setArray(field_vals)
 
         iteration, order, time = field_1ts.getTime()
