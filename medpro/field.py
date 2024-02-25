@@ -25,7 +25,7 @@ class MEDField:
         self,
         mesh: MEDMesh,
         field_double: mc.MEDCouplingFieldDouble,
-        profile: MEDProfile | None = None,
+        profile: MEDProfile,
     ):
         self.mesh = mesh
         self.field_double = field_double
@@ -34,10 +34,10 @@ class MEDField:
     @property
     def name(self) -> str:
         return self.field_double.getName()
-    
+
     @name.setter
     def name(self, value: str) -> None:
-        self.field_double.setName(value)    
+        self.field_double.setName(value)
 
     @property
     def on_nodes(self) -> bool:
@@ -76,7 +76,7 @@ class MEDField:
 
     def to_numpy_structured(self) -> numpy.typing.NDArray:
         values = self.to_numpy()
-        return rfn.unstructured_to_structured(values, names = self.components, copy = False)
+        return rfn.unstructured_to_structured(values, names=self.components, copy=False)
 
     def __neg__(self):
         return MEDField(self.mesh, self.field_double.negate(), self.profile)
@@ -86,8 +86,13 @@ class MEDField:
         if isinstance(other, self.__class__):
             if self.mesh != other.mesh:
                 raise ValueError("Cannot add two fields on different meshes.")
-            if self.profile != other.profile:
-                raise ValueError("Cannot add two fields on different profiles.")
+            if any(p is None for p in (self.profile, other.profile)) and any(p is not None for p in (self.profile, other.profile)):
+                raise ValueError("Cannot add two fields if one has a profile and the other does not.") 
+            if self.profile is not None and other.profile is not None:
+                if self.profile.node_ids_array.getName() != other.profile.node_ids_array.getName():
+                    raise ValueError(
+                        f"Cannot add two fields on different profiles : {self.profile.node_ids_array.getName()=} {other.profile.node_ids_array.getName()=}."
+                    )
             field_sum = self.field_double + other.field_double
             field_sum.setName(f"{self.name}_plus_{other.name}")
         elif isinstance(other, (int, float)):
@@ -117,6 +122,7 @@ class MEDField:
                     self.__class__, type(other)
                 )
             )
+        return self
 
     def __sub__(self, other: Any):
         field_sub: mc.MEDCouplingFieldDouble
@@ -171,6 +177,7 @@ class MEDField:
                     self.__class__, type(other)
                 )
             )
+        return self
 
     def __mul__(self, other: Any):
         field_mul: mc.MEDCouplingFieldDouble
@@ -208,18 +215,53 @@ class MEDField:
                     self.__class__, type(other)
                 )
             )
+        return self
 
     def extract_group(self, group_name: str):
         group = self.mesh.get_group_by_name(group_name)
         # https://docs.salome-platform.org/latest/dev/MEDCoupling/tutorial/medcoupling_fielddouble1_en.html#builing-of-a-subpart-of-a-field
+        # TODO : Should distiguish on node or cell field ?
+        subfield = None
+        profile_nodeids_array = None
+        print(f"{self.profile=}")
+        print(f"{group.to_profile().node_ids_array=}")
+        profile_nodeids_array = group.to_profile().node_ids_array
         subfield = self.field_double.buildSubPart(group.cell_ids_array)
-        #subfieldCpy=subfield.deepCopy()
-        #o2n=subfieldCpy.getMesh().sortCellsInMEDFileFrmt()
-        #subfieldCpy.getArray().renumberInPlace(o2n)        
-        return MEDField(self.mesh, subfield)
+        print(f"{profile_nodeids_array=}")
+        print(f"{subfield=}")
+        #else:
+        #    whole_mesh: mc.MEDCouplingMesh = self.mesh.mesh_file.getMeshAtLevel(0)            
+        #    profile_cell_ids = whole_mesh.getCellIdsLyingOnNodes(self.profile.node_ids_array, fullyIn=True)
+        #    group_cellids_in_profile: mc.DataArrayInt
+        #    group_cellids_in_profile = group.cell_ids_array.buildIntersection(profile_cell_ids)
+        #    cell_ids_array = group_cellids_in_profile
+        #    subfield = self.field_double # not using buildSubPart because it does not work yet
+        #    self.field_double[group_cellids_in_profile]
 
+            #profile_mesh = whole_mesh[group_cellids_in_profile]
+            #print(f"{profile_mesh=}")
+            #subfield=mc.MEDCouplingFieldDouble.New(mc.ON_NODES,mc.ONE_TIME)
+            #subfield.setName(self.name)
+            #subfield.setMesh(profile_mesh)
+            #subfield.setArray(self.field_double.getArray())
+            #subfield.setTime(self.timestamp.time, self.timestamp.iteration, self.timestamp.order)
+
+            #print(f"{group_cellids_in_profile=}")
+            #subfield = fieldFromSecondApproach.buildSubPart(group_cellids_in_profile)
+        # subfieldCpy=subfield.deepCopy()
+        # o2n=subfieldCpy.getMesh().sortCellsInMEDFileFrmt()
+        # subfieldCpy.getArray().renumberInPlace(o2n)
+        return MEDField(self.mesh, subfield, MEDProfile(self.mesh, profile_nodeids_array))
+
+    def apply_expression(self, expr: str):
+        field_expr = self.field_double.applyFuncCompo(expr)
+        return MEDField(self.mesh, field_expr, self.profile)
 
 class MEDFieldEvol:
+    """Wrapper around MEDCoupling::MEDFileFieldMultiTS
+    https://docs.salome-platform.org/latest/dev/MEDCoupling/developer/classMEDCoupling_1_1MEDFileFieldMultiTS.html
+    """
+
     def __init__(
         self,
         mesh: MEDMesh,
@@ -233,7 +275,7 @@ class MEDFieldEvol:
     @property
     def name(self) -> str:
         return self.file_field_multits.getName()
-    
+
     @name.setter
     def name(self, value: str) -> None:
         self.file_field_multits.setName(value)
@@ -260,9 +302,10 @@ class MEDFieldEvol:
         field_type: int = self.file_field_multits.getTypesOfFieldAvailable()[0][
             0
         ]  # TODO understand this and make it more general
+        # probably it is mc.ON_CELLS etc
         field_vals: mc.DataArrayDouble
-        depl_prf: mc.DataArrayInt
-        field_vals, depl_prf = field_1ts.getFieldWithProfile(
+        field_prf: mc.DataArrayInt
+        field_vals, field_prf = field_1ts.getFieldWithProfile(
             field_type, 0, self.mesh.mesh_file
         )
 
@@ -271,12 +314,22 @@ class MEDFieldEvol:
             field_type, mc.ONE_TIME
         )
         double_field.setName(field_1ts.getName())
+        profile_names = field_1ts.getPflsReallyUsed()
+        if len(profile_names) == 1:
+            field_prf.setName(profile_names[0])
+        elif len(profile_names) >= 2:
+            raise ValueError(
+                f"Found multiple ({profile_names=}) profiles for field {field_1ts.getName()=}"
+            )
+        else:
+            profile_name = f"PFL{field_1ts.getName()}"
+            field_prf.setName(profile_name)
         double_field.setMesh(whole_mesh)
         double_field.setArray(field_vals)
 
         iteration, order, time = field_1ts.getTime()
         double_field.setTime(time, iteration, order)
-        return MEDField(self.mesh, double_field)
+        return MEDField(self.mesh, double_field, MEDProfile(self.mesh, field_prf))
 
     def get_field_at_timestep(self, iteration: int, order: int):
         return self.__build_field(self.file_field_multits.getTimeStep(iteration, order))
@@ -291,30 +344,26 @@ class MEDFieldEvol:
                 subfield.field_double,
                 self.mesh.mesh_file,
                 0,
-                group.to_profile().node_ids_array,
+                subfield.profile.node_ids_array,
             )
-        return MEDFieldEvol(self.mesh, extracted_fieldevol, group.to_profile())
+        return MEDFieldEvol(self.mesh, extracted_fieldevol, subfield.profile)
 
     def add_field(self, med_field: MEDField):
         if med_field.timestamp in self.field_by_timestep:
             raise ValueError(
                 f"Timestamp {med_field.timestamp} already present in field_evol"
             )
-        if med_field.profile is None:
-            field_1ts: mc.MEDFileField1TS = mc.MEDFileField1TS.New()
-            field_1ts.setFieldNoProfileSBT(med_field.field_double)
-            self.file_field_multits.pushBackTimeStep(field_1ts)
-        else:
-            self.file_field_multits.appendFieldProfile(
-                med_field.field_double,
-                self.mesh.mesh_file,
-                0,
-                med_field.profile.node_ids_array,
-            )
+
+        self.file_field_multits.appendFieldProfile(
+            med_field.field_double,
+            self.mesh.mesh_file,
+            0,
+            med_field.profile.node_ids_array,
+        )
 
     @property
     def field_by_timestep(self) -> Dict[TimeStamp, MEDField]:
         return {
-            TimeStamp(*field_double.getTime()): self.__build_field(field_double)
-            for field_double in self.file_field_multits
+            TimeStamp(*field_1ts.getTime()): self.__build_field(field_1ts)
+            for field_1ts in self.file_field_multits
         }

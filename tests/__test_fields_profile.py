@@ -2,8 +2,8 @@ import medpro
 import numpy as np
 
 
-def test_field_evol():
-    fp = medpro.MEDFilePost("./tests/examples/box_with_depl.rmed")
+def test_field_evol_profile():
+    fp = medpro.MEDFilePost("./tests/examples/box_profile.rmed")
 
     assert len(fp.fieldevols_by_name) == 2
     assert "reslin__DEPL" in fp.fieldevols_by_name
@@ -14,7 +14,7 @@ def test_field_evol():
     assert "DX" in depl_evol.components
     assert "DY" in depl_evol.components
     assert "DZ" in depl_evol.components
-    assert len(depl_evol.profile_by_name) == 0
+    assert len(depl_evol.profile_by_name) == 2
     assert len(depl_evol.timesteps) == 1
     assert len(depl_evol.field_by_timestep) == 1
     assert depl_evol.timesteps[0].iteration == 1
@@ -27,8 +27,8 @@ def test_field_evol():
     # assert "reslin__DEPL" not in fp.fieldevols_by_name    
 
 
-def test_field():
-    fp = medpro.MEDFilePost("./tests/examples/box_with_depl.rmed")
+def test_field_profile():
+    fp = medpro.MEDFilePost("./tests/examples/box_profile.rmed")
     assert "reslin__DEPL" in fp.fieldevols_by_name
 
     depl_evol = fp.fieldevols_by_name["reslin__DEPL"]
@@ -46,8 +46,8 @@ def test_field():
     assert "DX" in depl.components
     assert "DY" in depl.components
     assert "DZ" in depl.components
-    assert depl.to_numpy().size == depl.mesh.num_nodes * len(depl.components)
-    assert depl.to_numpy_structured().size == depl.mesh.num_nodes
+    assert depl.to_numpy().size == 22 * len(depl.components)
+    assert depl.to_numpy_structured().size == 22
     depl.set_timestamp(2, 2, 0.0)
     depl_evol.add_field(depl)
     assert len(depl_evol.field_by_timestep) == 2
@@ -57,8 +57,8 @@ def test_field():
     # depl2 = depl_evol.get_field_at_timestep(1, 1)
     # assert depl2.name == "reslin2__DEPL" 
 
-def test_field_add():
-    fp = medpro.MEDFilePost("./tests/examples/box_with_depl.rmed")
+def test_field_add_profile():
+    fp = medpro.MEDFilePost("./tests/examples/box_profile.rmed")
     assert "reslin__DEPL" in fp.fieldevols_by_name
 
     depl_evol = fp.fieldevols_by_name["reslin__DEPL"]
@@ -80,8 +80,8 @@ def test_field_add():
     assert np.array_equal(depl2.to_numpy(), (depl + 3.15).to_numpy())
 
 
-def test_extract_group():
-    fp = medpro.MEDFilePost("./tests/examples/box_with_depl.rmed")
+def test_extract_group_profile():
+    fp = medpro.MEDFilePost("./tests/examples/box_profile.rmed")
     assert "reslin__DEPL" in fp.fieldevols_by_name
 
     depl_evol = fp.fieldevols_by_name["reslin__DEPL"]

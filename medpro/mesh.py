@@ -15,6 +15,16 @@ class MEDProfile:
     @property
     def node_ids(self) -> numpy.typing.NDArray:
         return self.node_ids_array.toNumPyArray()
+    
+    @property
+    def cell_ids_fully_in(self) -> numpy.typing.NDArray:
+        whole_mesh: mc.MEDCouplingMesh = self.mesh.mesh_file.getMeshAtLevel(0)
+        return whole_mesh.getCellIdsLyingOnNodes(self.node_ids_array, fullyIn=True).toNumPyArray()
+    
+    @property
+    def cell_ids_not_fully_in(self) -> numpy.typing.NDArray:
+        whole_mesh: mc.MEDCouplingMesh = self.mesh.mesh_file.getMeshAtLevel(0)
+        return whole_mesh.getCellIdsLyingOnNodes(self.node_ids_array, fullyIn=False).toNumPyArray()
 
 
 class MEDGroup:
@@ -39,6 +49,10 @@ class MEDGroup:
     @property
     def cell_ids(self) -> numpy.typing.NDArray:
         return self.cell_ids_array.toNumPyArray()
+    
+    @property
+    def node_ids(self) -> numpy.typing.NDArray:
+        return self.to_profile.node_ids_array.toNumPyArray()
 
     @property
     def cell_numbers(self) -> numpy.typing.NDArray:
@@ -134,3 +148,4 @@ class MEDMesh:
         wholemesh: mc.MEDCouplingUMesh = self.mesh_file.getMeshAtLevel(0)
         wholemesh.checkConsistency()
         wholemesh.checkGeomConsistency()
+        wholemesh.checkConsecutiveCellTypes()

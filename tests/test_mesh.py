@@ -14,6 +14,7 @@ def test_mesh():
     assert mesh.num_nodes == 27
     assert mesh.mesh_dim == 3
     assert mesh.space_dim == 3
+    assert mesh.coordinates.size == 27
 
     g1 = mesh.get_group_by_name("G1")
     assert list(g1.cell_ids) == [3, 4]

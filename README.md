@@ -1,8 +1,5 @@
----
-title: medpro
----
-
-[![image](https://dl.circleci.com/status-badge/img/circleci/WNUnhGtn8hkFFgdqyBFUNy/K9xJ7WXEW7An7moFDpY1AX/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/circleci/WNUnhGtn8hkFFgdqyBFUNy/K9xJ7WXEW7An7moFDpY1AX/tree/main)
+MEDPro (MED post PROcessing)
+============================
 
 [![image](https://codecov.io/gh/ldallolio/medpro/branch/main/graph/badge.svg)](https://codecov.io/gh/ldallolio/medpro)
 

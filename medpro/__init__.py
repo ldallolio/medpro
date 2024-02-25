@@ -90,6 +90,7 @@ class MEDFilePost:
         for mesh in meshes_by_name.values():
             mesh.check()
         for fieldevol in self.fieldevols_by_name.values():
+            fieldevol.file_field_multits.checkGlobsCoherency()
             assert fieldevol.file_field_multits.getMeshName() in meshes_by_name
 
     def write(self, output_file_name: str) -> None:
