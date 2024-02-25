@@ -52,7 +52,7 @@ class MEDGroup:
     
     @property
     def node_ids(self) -> numpy.typing.NDArray:
-        return self.to_profile.node_ids_array.toNumPyArray()
+        return self.to_profile().node_ids_array.toNumPyArray()
 
     @property
     def cell_numbers(self) -> numpy.typing.NDArray:
