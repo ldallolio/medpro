@@ -223,53 +223,23 @@ class MEDField:
         # TODO : Should distiguish on node or cell field ?
         subfield = None
         profile_nodeids_array = None
-        print(f"{self.profile=}")
-        print(f"{group.to_profile().node_ids_array=}")
-        print(f"{self.field_double.getMesh()=}")
-        print(f"{self.field_double=}")
-        profile_nodeids_array = group.to_profile().node_ids_array
-        print(f"{profile_nodeids_array=}")
-        try:
-            subfield = self.field_double.buildSubPart(group.cell_ids_array)
-        except:
-            subfield = self.field_double
-        # profile_cell_ids = self.field_double.getMesh().getCellIdsLyingOnNodes(self.profile.node_ids_array, fullyIn=True)
-        # print(f"{profile_cell_ids=}")
-        # for i in range(22):
-        #     try:
-        #         print(f"testing {i=}")
-        #         subfield2 = self.field_double.buildSubPart([i]) # group.cell_ids_array
-        #         print(f"passed {i=}")
-        #     except:
-        #         pass
-        # print(f"{profile_nodeids_array=}")
-        # print(f"{subfield=}")
-            
+        profile_nodeids_array = self.profile.node_ids_array
+        whole_mesh: mc.MEDCouplingMesh = self.mesh.mesh_file.getMeshAtLevel(0)
+        profile_cell_ids = whole_mesh.getCellIdsLyingOnNodes(profile_nodeids_array, fullyIn=True)
+        group_cellids_in_profile = group.cell_ids_array.buildIntersection(profile_cell_ids)
 
-        
-        #else:
-        #    whole_mesh: mc.MEDCouplingMesh = self.mesh.mesh_file.getMeshAtLevel(0)            
-        #    profile_cell_ids = whole_mesh.getCellIdsLyingOnNodes(self.profile.node_ids_array, fullyIn=True)
-        #    group_cellids_in_profile: mc.DataArrayInt
-        #    group_cellids_in_profile = group.cell_ids_array.buildIntersection(profile_cell_ids)
-        #    cell_ids_array = group_cellids_in_profile
-        #    subfield = self.field_double # not using buildSubPart because it does not work yet
-        #    self.field_double[group_cellids_in_profile]
+        computed_mesh = whole_mesh[group_cellids_in_profile]
+        computed_mesh.setName(self.mesh.mesh_file.getName())
+        print(f"{computed_mesh=}")
 
-            #profile_mesh = whole_mesh[group_cellids_in_profile]
-            #print(f"{profile_mesh=}")
-            #subfield=mc.MEDCouplingFieldDouble.New(mc.ON_NODES,mc.ONE_TIME)
-            #subfield.setName(self.name)
-            #subfield.setMesh(profile_mesh)
-            #subfield.setArray(self.field_double.getArray())
-            #subfield.setTime(self.timestamp.time, self.timestamp.iteration, self.timestamp.order)
+        node_ids_new, num_new_node_ids = computed_mesh.getNodeIdsInUse()
+        profile_array: mc.DataArrayInt = node_ids_new.invertArrayO2N2N2O(
+            num_new_node_ids
+        )
+        profile_array.setName(f"{self.profile.node_ids_array.getName()}_{group.name}")
+        subfield = self.field_double.buildSubPart(group_cellids_in_profile)
 
-            #print(f"{group_cellids_in_profile=}")
-            #subfield = fieldFromSecondApproach.buildSubPart(group_cellids_in_profile)
-        # subfieldCpy=subfield.deepCopy()
-        # o2n=subfieldCpy.getMesh().sortCellsInMEDFileFrmt()
-        # subfieldCpy.getArray().renumberInPlace(o2n)
-        return MEDField(self.mesh, subfield, MEDProfile(self.mesh, profile_nodeids_array))
+        return MEDField(self.mesh, subfield, MEDProfile(self.mesh, profile_array))
 
     def apply_expression(self, expr: str):
         field_expr = self.field_double.applyFuncCompo(expr)
@@ -321,19 +291,28 @@ class MEDFieldEvol:
             0
         ]  # TODO understand this and make it more general
         # probably it is mc.ON_CELLS etc
+
+        # https://docs.salome-platform.org/latest/dev/MEDCoupling/developer/medcouplingpyexamples.html#py_mcfield_loadfile_partial
         field_vals: mc.DataArrayDouble
         field_prf: mc.DataArrayInt
+
+        # the user wants to retrieve the binding (cell ids or node ids) with the whole mesh on which the partial field lies partially on.
         field_vals, field_prf = field_1ts.getFieldWithProfile(
             field_type, 0, self.mesh.mesh_file
         )
+
+        # it is possible to rebuild field obtained in first approach starting from second approach
         double_field: mc.MEDCouplingFieldDouble = mc.MEDCouplingFieldDouble.New(
             field_type, mc.ONE_TIME
         )
         double_field.setName(field_1ts.getName())
+
         whole_mesh: mc.MEDCouplingMesh = self.mesh.mesh_file.getMeshAtLevel(0)
         profile_cell_ids = whole_mesh.getCellIdsLyingOnNodes(field_prf, fullyIn=True)
         computed_mesh=whole_mesh[profile_cell_ids]
+        computed_mesh.zipCoords()
         computed_mesh.setName(self.mesh.mesh_file.getName())
+        double_field.setMesh(computed_mesh)
         profile_names = field_1ts.getPflsReallyUsed()
         if len(profile_names) == 1:
             field_prf.setName(profile_names[0])
@@ -344,11 +323,11 @@ class MEDFieldEvol:
         else:
             profile_name = f"PFL{field_1ts.getName()}"
             field_prf.setName(profile_name)
-        double_field.setMesh(computed_mesh)
         double_field.setArray(field_vals)
 
         iteration, order, time = field_1ts.getTime()
         double_field.setTime(time, iteration, order)
+        double_field.checkConsistencyLight()
         return MEDField(self.mesh, double_field, MEDProfile(self.mesh, field_prf))
 
     def get_field_at_timestep(self, iteration: int, order: int):
@@ -360,6 +339,8 @@ class MEDFieldEvol:
         extracted_fieldevol.setName(f"{self.name}_{group_name}")
         for _, field in self.field_by_timestep.items():
             subfield: MEDField = field.extract_group(group_name)
+            print(f"{subfield.field_double=}")
+            print(f"{subfield.profile.node_ids_array=}")            
             extracted_fieldevol.appendFieldProfile(
                 subfield.field_double,
                 self.mesh.mesh_file,
