@@ -304,7 +304,7 @@ class MEDFieldEvol:
         double_field.setName(field_1ts.getName())
 
         whole_mesh: mc.MEDCouplingMesh = self.mesh.mesh_file.getMeshAtLevel(0)
-        profile_cell_ids = whole_mesh.getCellIdsLyingOnNodes(field_prf, fullyIn=False)
+        profile_cell_ids = whole_mesh.getCellIdsLyingOnNodes(field_prf, fullyIn=True)
         computed_mesh=whole_mesh[profile_cell_ids]
         computed_mesh.zipCoords()
         computed_mesh.setName(self.mesh.mesh_file.getName())
