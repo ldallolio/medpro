@@ -221,16 +221,12 @@ class MEDField:
         group = self.mesh.get_group_by_name(group_name)
         # https://docs.salome-platform.org/latest/dev/MEDCoupling/tutorial/medcoupling_fielddouble1_en.html#builing-of-a-subpart-of-a-field
         # TODO : Should distiguish on node or cell field ?
-        subfield = None
-        profile_nodeids_array = None
-        profile_nodeids_array = self.profile.node_ids_array
+
         whole_mesh: mc.MEDCouplingMesh = self.mesh.mesh_file.getMeshAtLevel(0)
-        profile_cell_ids = whole_mesh.getCellIdsLyingOnNodes(profile_nodeids_array, fullyIn=True)
+        profile_cell_ids = whole_mesh.getCellIdsLyingOnNodes(self.profile.node_ids_array, fullyIn=True)
         group_cellids_in_profile = group.cell_ids_array.buildIntersection(profile_cell_ids)
 
         computed_mesh = whole_mesh[group_cellids_in_profile]
-        computed_mesh.setName(self.mesh.mesh_file.getName())
-        print(f"{computed_mesh=}")
 
         node_ids_new, num_new_node_ids = computed_mesh.getNodeIdsInUse()
         profile_array: mc.DataArrayInt = node_ids_new.invertArrayO2N2N2O(
