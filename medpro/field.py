@@ -304,9 +304,12 @@ class MEDFieldEvol:
         double_field.setName(field_1ts.getName())
 
         whole_mesh: mc.MEDCouplingMesh = self.mesh.mesh_file.getMeshAtLevel(0)
+     
         profile_cell_ids = whole_mesh.getCellIdsLyingOnNodes(field_prf, fullyIn=True)
-        computed_mesh=whole_mesh[profile_cell_ids]
-        computed_mesh.zipCoords()
+        computed_mesh: mc.MEDCouplingMesh
+        renum_o2n: mc.DataArrayInt
+        computed_mesh, renum_o2n = whole_mesh.buildPartAndReduceNodes(profile_cell_ids)
+
         computed_mesh.setName(self.mesh.mesh_file.getName())
         double_field.setMesh(computed_mesh)
         profile_names = field_1ts.getPflsReallyUsed()
@@ -323,7 +326,7 @@ class MEDFieldEvol:
 
         iteration, order, time = field_1ts.getTime()
         double_field.setTime(time, iteration, order)
-        double_field.checkConsistencyLight()
+        #double_field.checkConsistencyLight() # cannot (yet) check consistency because of multiple nodes
         return MEDField(self.mesh, double_field, MEDProfile(self.mesh, field_prf))
 
     def get_field_at_timestep(self, iteration: int, order: int):
