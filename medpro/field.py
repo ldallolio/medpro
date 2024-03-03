@@ -223,18 +223,18 @@ class MEDField:
         # TODO : Should distiguish on node or cell field ?
 
         whole_mesh: mc.MEDCouplingMesh = self.mesh.mesh_file.getMeshAtLevel(0)
-        profile_cell_ids = whole_mesh.getCellIdsLyingOnNodes(self.profile.node_ids_array, fullyIn=True)
-        group_cellids_in_profile = group.cell_ids_array.buildIntersection(profile_cell_ids)
+        profile_cell_ids: mc.DataArrayInt = whole_mesh.getCellIdsLyingOnNodes(self.profile.node_ids_array, fullyIn=True)
+        group_cellids_in_profile: mc.DataArrayInt = group.cell_ids_array.buildIntersection(profile_cell_ids)
 
-        computed_mesh = whole_mesh[group_cellids_in_profile]
+        computed_mesh: mc.MEDCouplingUMesh = whole_mesh[group_cellids_in_profile]
 
+        node_ids_new: mc.DataArrayInt
         node_ids_new, num_new_node_ids = computed_mesh.getNodeIdsInUse()
         profile_array: mc.DataArrayInt = node_ids_new.invertArrayO2N2N2O(
             num_new_node_ids
         )
         profile_array.setName(f"{self.profile.node_ids_array.getName()}_{group.name}")
-        subfield: mc.MEDCouplingFieldDouble
-        subfield = self.field_double.buildSubPart(group_cellids_in_profile)
+        subfield: mc.MEDCouplingFieldDouble = self.field_double.buildSubPart(group_cellids_in_profile)
         return MEDField(self.mesh, subfield, MEDProfile(self.mesh, profile_array))
 
     def apply_expression(self, expr: str):
@@ -309,10 +309,8 @@ class MEDFieldEvol:
             whole_mesh.getNumberOfNodes()
         )
      
-        profile_cell_ids = whole_mesh.getCellIdsLyingOnNodes(field_prf, fullyIn=True)
-        computed_mesh: mc.MEDCouplingUMesh
-        renum_o2n: mc.DataArrayInt
-        computed_mesh = whole_mesh.buildPartOfMySelf(profile_cell_ids, keepCoords = True)
+        profile_cell_ids: mc.DataArrayInt = whole_mesh.getCellIdsLyingOnNodes(field_prf, fullyIn=True)
+        computed_mesh: mc.MEDCouplingUMesh = whole_mesh.buildPartOfMySelf(profile_cell_ids, keepCoords = True)
         computed_mesh.renumberNodes(field_prf_o2n, len(field_prf))
 
         computed_mesh.setName(self.mesh.mesh_file.getName())
@@ -338,7 +336,6 @@ class MEDFieldEvol:
         return self.__build_field(self.file_field_multits.getTimeStep(iteration, order))
 
     def extract_group(self, group_name: str):
-        group = self.mesh.get_group_by_name(group_name)
         extracted_fieldevol: mc.MEDFileFieldMultiTS = mc.MEDFileFieldMultiTS.New()
         extracted_fieldevol.setName(f"{self.name}_{group_name}")
         for _, field in self.field_by_timestep.items():
