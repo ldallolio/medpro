@@ -221,20 +221,27 @@ class MEDField:
         group = self.mesh.get_group_by_name(group_name)
         # https://docs.salome-platform.org/latest/dev/MEDCoupling/tutorial/medcoupling_fielddouble1_en.html#builing-of-a-subpart-of-a-field
         # TODO : Should distiguish on node or cell field ?
+        # TODO : Handle mesh level ? add a test for group SUP
 
+        # Find cells in common (=intersection) between the group and the profile
         whole_mesh: mc.MEDCouplingMesh = self.mesh.mesh_file.getMeshAtLevel(0)
         profile_cell_ids: mc.DataArrayInt = whole_mesh.getCellIdsLyingOnNodes(self.profile.node_ids_array, fullyIn=True)
         group_cellids_in_profile: mc.DataArrayInt = group.cell_ids_array.buildIntersection(profile_cell_ids)
 
-        computed_mesh: mc.MEDCouplingUMesh = whole_mesh[group_cellids_in_profile]
+        # Reduce field using cells in common between group and profile
+        subfield: mc.MEDCouplingFieldDouble = self.field_double.buildSubPart(group_cellids_in_profile)
 
-        node_ids_new: mc.DataArrayInt
-        node_ids_new, num_new_node_ids = computed_mesh.getNodeIdsInUse()
-        profile_array: mc.DataArrayInt = node_ids_new.invertArrayO2N2N2O(
+        # Build a reduced mesh and use it to compute node ids
+        computed_mesh: mc.MEDCouplingUMesh = whole_mesh.buildPartOfMySelf(group_cellids_in_profile, keepCoords = False)
+
+        # Compute a new profile for the field (node ids in common between the original profile and the group)
+        node_ids_o2n: mc.DataArrayInt
+        node_ids_o2n, num_new_node_ids = computed_mesh.getNodeIdsInUse()
+        profile_array: mc.DataArrayInt = node_ids_o2n.invertArrayO2N2N2O(
             num_new_node_ids
         )
         profile_array.setName(f"{self.profile.node_ids_array.getName()}_{group.name}")
-        subfield: mc.MEDCouplingFieldDouble = self.field_double.buildSubPart(group_cellids_in_profile)
+
         return MEDField(self.mesh, subfield, MEDProfile(self.mesh, profile_array))
 
     def apply_expression(self, expr: str):
@@ -255,6 +262,36 @@ class MEDFieldEvol:
         self.mesh = mesh
         self.file_field_multits = file_field_multits
         self.profile = profile
+        self.computed_mesh: mc.MEDCouplingUMesh = self.__compute_mesh()
+
+    def __compute_mesh(self) -> mc.MEDCouplingUMesh:
+        field_type: int = self.file_field_multits.getTypesOfFieldAvailable()[0][
+            0
+        ]  # TODO understand this and make it more general, probably it is mc.ON_CELLS etc
+        mesh_level = 0 # TODO make this more general or extract as a parameter
+
+        # https://docs.salome-platform.org/latest/dev/MEDCoupling/developer/medcouplingpyexamples.html#py_mcfield_loadfile_partial
+        field_vals: mc.DataArrayDouble
+        field_prf: mc.DataArrayInt
+
+        # the user wants to retrieve the binding (cell ids or node ids) with the whole mesh on which the partial field lies partially on.
+        field_vals, field_prf = self.file_field_multits.getFieldWithProfile(
+            field_type, 1, 1, mesh_level, self.mesh.mesh_file
+        )
+        whole_mesh: mc.MEDCouplingMesh = self.mesh.mesh_file.getMeshAtLevel(mesh_level)
+     
+        # Submesh including only cells needed to have node ids in the profile
+        profile_cell_ids: mc.DataArrayInt = whole_mesh.getCellIdsLyingOnNodes(field_prf, fullyIn=True)
+        computed_mesh: mc.MEDCouplingUMesh = whole_mesh.buildPartOfMySelf(profile_cell_ids, keepCoords = True)
+
+        # Also remove (orphan) nodes if they are not requested by the profile (they might be needed at other levels)
+        # This will make sure that the computed mesh has exactly the right number of nodes (mandatory for checkConsistencyLight)
+        field_prf_o2n: mc.DataArrayInt = field_prf.invertArrayN2O2O2N(
+            whole_mesh.getNumberOfNodes()
+        )
+        computed_mesh.renumberNodes(field_prf_o2n, len(field_prf))
+        computed_mesh.setName(self.mesh.mesh_file.getName())
+        return computed_mesh
 
     @property
     def name(self) -> str:
@@ -285,8 +322,8 @@ class MEDFieldEvol:
     def __build_field(self, field_1ts: mc.MEDFileAnyTypeField1TS):
         field_type: int = self.file_field_multits.getTypesOfFieldAvailable()[0][
             0
-        ]  # TODO understand this and make it more general
-        # probably it is mc.ON_CELLS etc
+        ]  # TODO understand this and make it more general, probably it is mc.ON_CELLS etc
+        mesh_level = 0 # TODO make this more general or extract as a parameter
 
         # https://docs.salome-platform.org/latest/dev/MEDCoupling/developer/medcouplingpyexamples.html#py_mcfield_loadfile_partial
         field_vals: mc.DataArrayDouble
@@ -294,7 +331,7 @@ class MEDFieldEvol:
 
         # the user wants to retrieve the binding (cell ids or node ids) with the whole mesh on which the partial field lies partially on.
         field_vals, field_prf = field_1ts.getFieldWithProfile(
-            field_type, 0, self.mesh.mesh_file
+            field_type, mesh_level, self.mesh.mesh_file
         )
 
         # it is possible to rebuild field obtained in first approach starting from second approach
@@ -303,18 +340,7 @@ class MEDFieldEvol:
         )
         double_field.setName(field_1ts.getName())
 
-        whole_mesh: mc.MEDCouplingMesh = self.mesh.mesh_file.getMeshAtLevel(0)
-
-        field_prf_o2n: mc.DataArrayInt = field_prf.invertArrayN2O2O2N(
-            whole_mesh.getNumberOfNodes()
-        )
-     
-        profile_cell_ids: mc.DataArrayInt = whole_mesh.getCellIdsLyingOnNodes(field_prf, fullyIn=True)
-        computed_mesh: mc.MEDCouplingUMesh = whole_mesh.buildPartOfMySelf(profile_cell_ids, keepCoords = True)
-        computed_mesh.renumberNodes(field_prf_o2n, len(field_prf))
-
-        computed_mesh.setName(self.mesh.mesh_file.getName())
-        double_field.setMesh(computed_mesh)
+        double_field.setMesh(self.computed_mesh)
         profile_names = field_1ts.getPflsReallyUsed()
         if len(profile_names) == 1:
             field_prf.setName(profile_names[0])
@@ -329,7 +355,7 @@ class MEDFieldEvol:
 
         iteration, order, time = field_1ts.getTime()
         double_field.setTime(time, iteration, order)
-        double_field.checkConsistencyLight() # cannot (yet) check consistency because of multiple nodes
+        double_field.checkConsistencyLight()
         return MEDField(self.mesh, double_field, MEDProfile(self.mesh, field_prf))
 
     def get_field_at_timestep(self, iteration: int, order: int):
