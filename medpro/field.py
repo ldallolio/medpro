@@ -233,8 +233,8 @@ class MEDField:
             num_new_node_ids
         )
         profile_array.setName(f"{self.profile.node_ids_array.getName()}_{group.name}")
+        subfield: mc.MEDCouplingFieldDouble
         subfield = self.field_double.buildSubPart(group_cellids_in_profile)
-
         return MEDField(self.mesh, subfield, MEDProfile(self.mesh, profile_array))
 
     def apply_expression(self, expr: str):
@@ -304,11 +304,16 @@ class MEDFieldEvol:
         double_field.setName(field_1ts.getName())
 
         whole_mesh: mc.MEDCouplingMesh = self.mesh.mesh_file.getMeshAtLevel(0)
+
+        field_prf_o2n: mc.DataArrayInt = field_prf.invertArrayN2O2O2N(
+            whole_mesh.getNumberOfNodes()
+        )
      
         profile_cell_ids = whole_mesh.getCellIdsLyingOnNodes(field_prf, fullyIn=True)
-        computed_mesh: mc.MEDCouplingMesh
+        computed_mesh: mc.MEDCouplingUMesh
         renum_o2n: mc.DataArrayInt
-        computed_mesh, renum_o2n = whole_mesh.buildPartAndReduceNodes(profile_cell_ids)
+        computed_mesh = whole_mesh.buildPartOfMySelf(profile_cell_ids, keepCoords = True)
+        computed_mesh.renumberNodes(field_prf_o2n, len(field_prf))
 
         computed_mesh.setName(self.mesh.mesh_file.getName())
         double_field.setMesh(computed_mesh)
@@ -326,7 +331,7 @@ class MEDFieldEvol:
 
         iteration, order, time = field_1ts.getTime()
         double_field.setTime(time, iteration, order)
-        #double_field.checkConsistencyLight() # cannot (yet) check consistency because of multiple nodes
+        double_field.checkConsistencyLight() # cannot (yet) check consistency because of multiple nodes
         return MEDField(self.mesh, double_field, MEDProfile(self.mesh, field_prf))
 
     def get_field_at_timestep(self, iteration: int, order: int):
@@ -337,9 +342,7 @@ class MEDFieldEvol:
         extracted_fieldevol: mc.MEDFileFieldMultiTS = mc.MEDFileFieldMultiTS.New()
         extracted_fieldevol.setName(f"{self.name}_{group_name}")
         for _, field in self.field_by_timestep.items():
-            subfield: MEDField = field.extract_group(group_name)
-            print(f"{subfield.field_double=}")
-            print(f"{subfield.profile.node_ids_array=}")            
+            subfield: MEDField = field.extract_group(group_name)         
             extracted_fieldevol.appendFieldProfile(
                 subfield.field_double,
                 self.mesh.mesh_file,
