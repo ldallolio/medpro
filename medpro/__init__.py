@@ -69,6 +69,7 @@ class MEDFilePost:
                 else {}
             )
         except mc.InterpKernelException:
+            traceback.print_exc()
             return {}
         
     def add_mesh(self, mesh: MEDMesh) -> None:

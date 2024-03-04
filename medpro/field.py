@@ -86,10 +86,17 @@ class MEDField:
         if isinstance(other, self.__class__):
             if self.mesh != other.mesh:
                 raise ValueError("Cannot add two fields on different meshes.")
-            if any(p is None for p in (self.profile, other.profile)) and any(p is not None for p in (self.profile, other.profile)):
-                raise ValueError("Cannot add two fields if one has a profile and the other does not.") 
+            if any(p is None for p in (self.profile, other.profile)) and any(
+                p is not None for p in (self.profile, other.profile)
+            ):
+                raise ValueError(
+                    "Cannot add two fields if one has a profile and the other does not."
+                )
             if self.profile is not None and other.profile is not None:
-                if self.profile.node_ids_array.getName() != other.profile.node_ids_array.getName():
+                if (
+                    self.profile.node_ids_array.getName()
+                    != other.profile.node_ids_array.getName()
+                ):
                     raise ValueError(
                         f"Cannot add two fields on different profiles : {self.profile.node_ids_array.getName()=} {other.profile.node_ids_array.getName()=}."
                     )
@@ -225,14 +232,22 @@ class MEDField:
 
         # Find cells in common (=intersection) between the group and the profile
         whole_mesh: mc.MEDCouplingMesh = self.mesh.mesh_file.getMeshAtLevel(0)
-        profile_cell_ids: mc.DataArrayInt = whole_mesh.getCellIdsLyingOnNodes(self.profile.node_ids_array, fullyIn=True)
-        group_cellids_in_profile: mc.DataArrayInt = group.cell_ids_array.buildIntersection(profile_cell_ids)
+        profile_cell_ids: mc.DataArrayInt = whole_mesh.getCellIdsLyingOnNodes(
+            self.profile.node_ids_array, fullyIn=True
+        )
+        group_cellids_in_profile: mc.DataArrayInt = (
+            group.cell_ids_array.buildIntersection(profile_cell_ids)
+        )
 
         # Reduce field using cells in common between group and profile
-        subfield: mc.MEDCouplingFieldDouble = self.field_double.buildSubPart(group_cellids_in_profile)
+        subfield: mc.MEDCouplingFieldDouble = self.field_double.buildSubPart(
+            group_cellids_in_profile
+        )
 
         # Build a reduced mesh and use it to compute node ids
-        computed_mesh: mc.MEDCouplingUMesh = whole_mesh.buildPartOfMySelf(group_cellids_in_profile, keepCoords = False)
+        computed_mesh: mc.MEDCouplingUMesh = whole_mesh.buildPartOfMySelf(
+            group_cellids_in_profile, keepCoords=False
+        )
 
         # Compute a new profile for the field (node ids in common between the original profile and the group)
         node_ids_o2n: mc.DataArrayInt
@@ -247,6 +262,7 @@ class MEDField:
     def apply_expression(self, expr: str):
         field_expr = self.field_double.applyFuncCompo(expr)
         return MEDField(self.mesh, field_expr, self.profile)
+
 
 class MEDFieldEvol:
     """Wrapper around MEDCoupling::MEDFileFieldMultiTS
@@ -268,21 +284,40 @@ class MEDFieldEvol:
         field_type: int = self.file_field_multits.getTypesOfFieldAvailable()[0][
             0
         ]  # TODO understand this and make it more general, probably it is mc.ON_CELLS etc
-        mesh_level = 0 # TODO make this more general or extract as a parameter
+        mesh_level = 0  # TODO make this more general or extract as a parameter
 
         # https://docs.salome-platform.org/latest/dev/MEDCoupling/developer/medcouplingpyexamples.html#py_mcfield_loadfile_partial
         field_vals: mc.DataArrayDouble
         field_prf: mc.DataArrayInt
 
+        # https://docs.salome-platform.org/latest/dev/MEDCoupling/developer/classMEDCoupling_1_1MEDFileAnyTypeFieldMultiTSWithoutSDA.html#a33f3edf8d4ebe1796549715551275c06
+        field_abs_dim, available_levels = self.file_field_multits.getNonEmptyLevels(
+            1, 1, self.mesh.name
+        )
+
+        max_field_level: int
+        if field_abs_dim == -1:
+            # If there is only node fields defined in 'this' -1 is returned and 'levs' output parameter will be empty.
+            # In this case the caller has to know the underlying mesh it refers to.
+            # By default it is the level 0 of the corresponding mesh.
+            max_field_level = 0
+        else:
+            field_relative_level = 0
+            max_field_level = field_abs_dim - self.mesh.mesh_dim + field_relative_level
+
         # the user wants to retrieve the binding (cell ids or node ids) with the whole mesh on which the partial field lies partially on.
         field_vals, field_prf = self.file_field_multits.getFieldWithProfile(
-            field_type, 1, 1, mesh_level, self.mesh.mesh_file
+            field_type, 1, 1, max_field_level, self.mesh.mesh_file
         )
         whole_mesh: mc.MEDCouplingMesh = self.mesh.mesh_file.getMeshAtLevel(mesh_level)
-     
+
         # Submesh including only cells needed to have node ids in the profile
-        profile_cell_ids: mc.DataArrayInt = whole_mesh.getCellIdsLyingOnNodes(field_prf, fullyIn=True)
-        computed_mesh: mc.MEDCouplingUMesh = whole_mesh.buildPartOfMySelf(profile_cell_ids, keepCoords = True)
+        profile_cell_ids: mc.DataArrayInt = whole_mesh.getCellIdsLyingOnNodes(
+            field_prf, fullyIn=True
+        )
+        computed_mesh: mc.MEDCouplingUMesh = whole_mesh.buildPartOfMySelf(
+            profile_cell_ids, keepCoords=True
+        )
 
         # Also remove (orphan) nodes if they are not requested by the profile (they might be needed at other levels)
         # This will make sure that the computed mesh has exactly the right number of nodes (mandatory for checkConsistencyLight)
@@ -323,7 +358,7 @@ class MEDFieldEvol:
         field_type: int = self.file_field_multits.getTypesOfFieldAvailable()[0][
             0
         ]  # TODO understand this and make it more general, probably it is mc.ON_CELLS etc
-        mesh_level = 0 # TODO make this more general or extract as a parameter
+        mesh_level = 0  # TODO make this more general or extract as a parameter
 
         # https://docs.salome-platform.org/latest/dev/MEDCoupling/developer/medcouplingpyexamples.html#py_mcfield_loadfile_partial
         field_vals: mc.DataArrayDouble
@@ -365,7 +400,7 @@ class MEDFieldEvol:
         extracted_fieldevol: mc.MEDFileFieldMultiTS = mc.MEDFileFieldMultiTS.New()
         extracted_fieldevol.setName(f"{self.name}_{group_name}")
         for _, field in self.field_by_timestep.items():
-            subfield: MEDField = field.extract_group(group_name)         
+            subfield: MEDField = field.extract_group(group_name)
             extracted_fieldevol.appendFieldProfile(
                 subfield.field_double,
                 self.mesh.mesh_file,
