@@ -1,3 +1,6 @@
+import pathlib
+import sys
+
 from ._version import get_versions
 
 __version__ = get_versions()["version"]
@@ -18,7 +21,10 @@ class MEDFilePost:
     https://docs.salome-platform.org/latest/dev/MEDCoupling/developer/classMEDCoupling_1_1MEDFileData.html
     """
 
-    def __init__(self, file_name: str | None = None):
+    def __init__(self, file_name: str | pathlib.Path | None = None):
+        if isinstance(file_name, pathlib.Path):
+            file_name = file_name.as_posix()
+
         file_data: mc.MEDFileData
         if file_name is not None:
             file_data = mc.MEDFileData.New(file_name)
@@ -96,4 +102,7 @@ class MEDFilePost:
 
     def write(self, output_file_name: str) -> None:
         self.check()
-        self.file_data.write33(output_file_name, 2)
+        if sys.platform == "win32":
+            self.file_data.write(output_file_name, 2)
+        else:
+            self.file_data.write33(output_file_name, 2)

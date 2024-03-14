@@ -1,9 +1,12 @@
+import pathlib
+import sys
+
 import medpro
 import tempfile, os
 
-def test_read_write():
+def test_read_write(ex_dir):
 
-    fp = medpro.MEDFilePost("./tests/examples/box_with_depl.rmed")
+    fp = medpro.MEDFilePost(ex_dir / "box_with_depl.rmed")
     with tempfile.TemporaryDirectory() as tempdir:
         tmpfilepath = os.path.join(tempdir, "output.rmed")
         fp.write(tmpfilepath)
@@ -15,9 +18,9 @@ def test_new_write():
         fp = medpro.MEDFilePost()
         fp.write(tmpfilepath)
 
-def test_extract_group():
+def test_extract_group(ex_dir):
 
-    fp = medpro.MEDFilePost("./tests/examples/box_with_depl.rmed")
+    fp = medpro.MEDFilePost(ex_dir / "box_with_depl.rmed")
     assert "reslin__DEPL" in fp.fieldevols_by_name
 
     depl_evol = fp.fieldevols_by_name["reslin__DEPL"]
