@@ -2,8 +2,8 @@ import medpro
 import numpy as np
 
 
-def test_field_evol_profile():
-    fp = medpro.MEDFilePost("./tests/examples/box_profile.rmed")
+def test_field_evol_profile(ex_dir):
+    fp = medpro.MEDFilePost(ex_dir / "box_profile.rmed")
 
     assert len(fp.fieldevols_by_name) == 2
     assert "reslin__DEPL" in fp.fieldevols_by_name
@@ -27,8 +27,8 @@ def test_field_evol_profile():
     # assert "reslin__DEPL" not in fp.fieldevols_by_name    
 
 
-def test_field_profile():
-    fp = medpro.MEDFilePost("./tests/examples/box_profile.rmed")
+def test_field_profile(ex_dir):
+    fp = medpro.MEDFilePost(ex_dir / "box_profile.rmed")
     assert "reslin__DEPL" in fp.fieldevols_by_name
 
     depl_evol = fp.fieldevols_by_name["reslin__DEPL"]
@@ -57,8 +57,8 @@ def test_field_profile():
     # depl2 = depl_evol.get_field_at_timestep(1, 1)
     # assert depl2.name == "reslin2__DEPL" 
 
-def test_field_add_profile():
-    fp = medpro.MEDFilePost("./tests/examples/box_profile.rmed")
+def test_field_add_profile(ex_dir):
+    fp = medpro.MEDFilePost(ex_dir / "box_profile.rmed")
     assert "reslin__DEPL" in fp.fieldevols_by_name
 
     depl_evol = fp.fieldevols_by_name["reslin__DEPL"]
@@ -80,8 +80,8 @@ def test_field_add_profile():
     assert np.array_equal(depl2.to_numpy(), (depl + 3.15).to_numpy())
 
 
-def test_extract_group_profile():
-    fp = medpro.MEDFilePost("./tests/examples/box_profile.rmed")
+def test_extract_group_profile(ex_dir):
+    fp = medpro.MEDFilePost(ex_dir / "box_profile.rmed")
     assert "reslin__DEPL" in fp.fieldevols_by_name
 
     depl_evol = fp.fieldevols_by_name["reslin__DEPL"]

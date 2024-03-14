@@ -1,8 +1,8 @@
 import medpro
 
 
-def test_mesh():
-    fp = medpro.MEDFilePost("./tests/examples/box_with_depl.rmed")
+def test_mesh(ex_dir):
+    fp = medpro.MEDFilePost(ex_dir / "box_with_depl.rmed")
     assert len(fp.params_by_name) == 0
     assert len(fp.meshes_by_name) == 1
     assert "mesh" in fp.meshes_by_name
