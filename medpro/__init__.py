@@ -83,6 +83,7 @@ class MEDFilePost:
         if meshes is None:
             meshes = mc.MEDFileMeshes.New()
             self.file_data.setMeshes(meshes)
+        assert meshes is not None
         meshes.pushMesh(mesh.mesh_file)        
 
     def add_fieldevol(self, field_evol: MEDFieldEvol) -> None:
@@ -90,6 +91,7 @@ class MEDFilePost:
         if fields is None:
             fields = mc.MEDFileFields.New()
             self.file_data.setFields(fields)
+        assert fields is not None
         fields.pushField(field_evol.file_field_multits)
 
     def check(self) -> None:

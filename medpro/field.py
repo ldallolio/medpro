@@ -40,6 +40,15 @@ class MEDField:
         self.field_double.setName(value)
 
     @property
+    def field_mesh_dim(self) -> int:
+        return self.field_double.getMesh().getMeshDimension()
+    
+    @property
+    def field_relative_dim(self) -> int:
+        return self.field_double.getMesh().getMeshDimension() - self.mesh.mesh_dim  
+
+
+    @property
     def on_nodes(self) -> bool:
         return self.field_double.getTypeOfField() == mc.ON_NODES
 
@@ -231,7 +240,7 @@ class MEDField:
         # TODO : Handle mesh level ? add a test for group SUP
 
         # Find cells in common (=intersection) between the group and the profile
-        whole_mesh: mc.MEDCouplingMesh = self.mesh.mesh_file.getMeshAtLevel(0)
+        whole_mesh: mc.MEDCouplingUMesh = self.mesh.mesh_file.getMeshAtLevel(0)
         profile_cell_ids: mc.DataArrayInt = whole_mesh.getCellIdsLyingOnNodes(
             self.profile.node_ids_array, fullyIn=True
         )
@@ -260,7 +269,7 @@ class MEDField:
         return MEDField(self.mesh, subfield, MEDProfile(self.mesh, profile_array))
 
     def apply_expression(self, expr: str):
-        field_expr = self.field_double.applyFuncCompo(expr)
+        field_expr = self.field_double.applyFuncCompo(len(self.components),expr)
         return MEDField(self.mesh, field_expr, self.profile)
 
 
@@ -280,6 +289,24 @@ class MEDFieldEvol:
         self.profile = profile
         self.computed_mesh: mc.MEDCouplingUMesh = self.__compute_mesh()
 
+    @property
+    def max_field_level(self):
+        # https://docs.salome-platform.org/latest/dev/MEDCoupling/developer/classMEDCoupling_1_1MEDFileAnyTypeFieldMultiTSWithoutSDA.html#a33f3edf8d4ebe1796549715551275c06
+        field_abs_dim, available_levels = self.file_field_multits.getNonEmptyLevels(
+            1, 1, self.mesh.name
+        )
+
+        max_level: int
+        if field_abs_dim == -1:
+            # If there is only node fields defined in 'this' -1 is returned and 'levs' output parameter will be empty.
+            # In this case the caller has to know the underlying mesh it refers to.
+            # By default it is the level 0 of the corresponding mesh.
+            max_level = 0
+        else:
+            field_relative_level = 0
+            max_level = field_abs_dim - self.mesh.mesh_dim + field_relative_level
+        return max_level
+
     def __compute_mesh(self) -> mc.MEDCouplingUMesh:
         field_type: int = self.file_field_multits.getTypesOfFieldAvailable()[0][
             0
@@ -290,26 +317,11 @@ class MEDFieldEvol:
         field_vals: mc.DataArrayDouble
         field_prf: mc.DataArrayInt
 
-        # https://docs.salome-platform.org/latest/dev/MEDCoupling/developer/classMEDCoupling_1_1MEDFileAnyTypeFieldMultiTSWithoutSDA.html#a33f3edf8d4ebe1796549715551275c06
-        field_abs_dim, available_levels = self.file_field_multits.getNonEmptyLevels(
-            1, 1, self.mesh.name
-        )
-
-        max_field_level: int
-        if field_abs_dim == -1:
-            # If there is only node fields defined in 'this' -1 is returned and 'levs' output parameter will be empty.
-            # In this case the caller has to know the underlying mesh it refers to.
-            # By default it is the level 0 of the corresponding mesh.
-            max_field_level = 0
-        else:
-            field_relative_level = 0
-            max_field_level = field_abs_dim - self.mesh.mesh_dim + field_relative_level
-
         # the user wants to retrieve the binding (cell ids or node ids) with the whole mesh on which the partial field lies partially on.
         field_vals, field_prf = self.file_field_multits.getFieldWithProfile(
-            field_type, 1, 1, max_field_level, self.mesh.mesh_file
+            field_type, 1, 1, self.max_field_level, self.mesh.mesh_file
         )
-        whole_mesh: mc.MEDCouplingMesh = self.mesh.mesh_file.getMeshAtLevel(mesh_level)
+        whole_mesh: mc.MEDCouplingUMesh = self.mesh.mesh_file.getMeshAtLevel(mesh_level)
 
         # Submesh including only cells needed to have node ids in the profile
         profile_cell_ids: mc.DataArrayInt = whole_mesh.getCellIdsLyingOnNodes(
@@ -354,7 +366,7 @@ class MEDFieldEvol:
             for iteration, order, time in self.file_field_multits.getTimeSteps()
         ]
 
-    def __build_field(self, field_1ts: mc.MEDFileAnyTypeField1TS):
+    def __build_field(self, field_1ts: mc.MEDFileFloatField1TS):
         field_type: int = self.file_field_multits.getTypesOfFieldAvailable()[0][
             0
         ]  # TODO understand this and make it more general, probably it is mc.ON_CELLS etc
@@ -409,18 +421,38 @@ class MEDFieldEvol:
             )
         return MEDFieldEvol(self.mesh, extracted_fieldevol, subfield.profile)
 
-    def add_field(self, med_field: MEDField):
+    def add_field(self, med_field: MEDField) -> None:
         if med_field.timestamp in self.field_by_timestep:
             raise ValueError(
                 f"Timestamp {med_field.timestamp} already present in field_evol"
             )
 
+        # print(f"{med_field.field_double.getName()=}")
+        # print(f"{med_field.field_double.getArray().getName()=}")
+        # print(f"{self.mesh.mesh_file.getName()=}")
+        # print(f"{med_field.profile.node_ids_array.getName()=}")
+        # print(f"{med_field.field_double.getName()=}")
+        # print(f"{self.file_field_multits.getPfls()=}")
+        # print(f"{self.file_field_multits.getPflsReallyUsed()=}")
+        # print(f"{self.file_field_multits.getPflsReallyUsedMulti()=}")
+        # print(f"{med_field.field_double.getMesh().getMeshDimension()=}")
+        # print(f"{self.mesh.mesh_file.getMeshDimension()=}")
         self.file_field_multits.appendFieldProfile(
             med_field.field_double,
             self.mesh.mesh_file,
-            0,
+            med_field.field_relative_dim,
             med_field.profile.node_ids_array,
         )
+        self.file_field_multits.checkGlobsCoherency()
+        #self.file_field_multits.appendProfile(med_field.profile.node_ids_array)
+        # print(f"{med_field.field_double.getName()=}")
+        # print(f"{med_field.field_double.getArray().getName()=}")
+        # print(f"{self.mesh.mesh_file.getName()=}")
+        # print(f"{med_field.profile.node_ids_array.getName()=}")
+        # print(f"{med_field.field_double.getName()=}")
+        # print(f"{self.file_field_multits.getPfls()=}")
+        # print(f"{self.file_field_multits.getPflsReallyUsed()=}")
+        # print(f"{self.file_field_multits.getPflsReallyUsedMulti()=}")       
 
     @property
     def field_by_timestep(self) -> Dict[TimeStamp, MEDField]:

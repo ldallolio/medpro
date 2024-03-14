@@ -46,8 +46,8 @@ def test_field_doublenodes(ex_dir):
     assert "DX" in depl.components
     assert "DY" in depl.components
     assert "DZ" in depl.components
-    assert depl.to_numpy().size == 35 * len(depl.components)
-    assert depl.to_numpy_structured().size == 35
+    assert depl.to_numpy().size == len(depl.profile.node_ids_array) * len(depl.components)
+    assert depl.to_numpy_structured().size == len(depl.profile.node_ids_array)
     depl.set_timestamp(2, 2, 0.0)
     depl_evol.add_field(depl)
     assert len(depl_evol.field_by_timestep) == 2

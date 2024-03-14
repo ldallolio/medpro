@@ -53,8 +53,8 @@ def test_field(ex_dir):
     assert "DRX" in depl.components
     assert "DRY" in depl.components
     assert "DRZ" in depl.components
-    assert depl.to_numpy().size == depl.mesh.num_nodes * len(depl.components)
-    assert depl.to_numpy_structured().size == depl.mesh.num_nodes
+    assert depl.to_numpy().size == len(depl.profile.node_ids_array) * len(depl.components)
+    assert depl.to_numpy_structured().size == len(depl.profile.node_ids_array)
     depl.set_timestamp(4, 4, 999.999)
     depl_evol.add_field(depl)
     assert len(depl_evol.field_by_timestep) == 4
@@ -118,5 +118,5 @@ def test_extract_group(ex_dir):
     assert "DZ" in depl.components
     assert "DRX" in depl.components
     assert "DRY" in depl.components
-    assert "DRZ" in depl.components
-    assert depl.to_numpy().size == 15 * len(depl.components)
+    assert "DRZ" in depl.components    
+    assert depl.to_numpy().size == len(depl.profile.node_ids_array) * len(depl.components)

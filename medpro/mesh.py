@@ -18,12 +18,12 @@ class MEDProfile:
     
     @property
     def cell_ids_fully_in(self) -> numpy.typing.NDArray:
-        whole_mesh: mc.MEDCouplingMesh = self.mesh.mesh_file.getMeshAtLevel(0)
+        whole_mesh: mc.MEDCouplingUMesh = self.mesh.mesh_file.getMeshAtLevel(0)
         return whole_mesh.getCellIdsLyingOnNodes(self.node_ids_array, fullyIn=True).toNumPyArray()
     
     @property
     def cell_ids_not_fully_in(self) -> numpy.typing.NDArray:
-        whole_mesh: mc.MEDCouplingMesh = self.mesh.mesh_file.getMeshAtLevel(0)
+        whole_mesh: mc.MEDCouplingUMesh = self.mesh.mesh_file.getMeshAtLevel(0)
         return whole_mesh.getCellIdsLyingOnNodes(self.node_ids_array, fullyIn=False).toNumPyArray()
 
 
