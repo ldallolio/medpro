@@ -2,8 +2,8 @@ import medpro
 import numpy as np
 
 
-def test_field_evol():
-    fp = medpro.MEDFilePost("./tests/examples/box_shell_beam_profile.rmed")
+def test_field_evol(ex_dir):
+    fp = medpro.MEDFilePost(ex_dir / "box_shell_beam_profile.rmed")
 
     assert len(fp.fieldevols_by_name) == 5
     assert "reslin__DEPL" in fp.fieldevols_by_name
@@ -30,8 +30,8 @@ def test_field_evol():
     # assert "reslin__DEPL" not in fp.fieldevols_by_name    
 
 
-def test_field():
-    fp = medpro.MEDFilePost("./tests/examples/box_shell_beam_profile.rmed")
+def test_field(ex_dir):
+    fp = medpro.MEDFilePost(ex_dir / "box_shell_beam_profile.rmed")
     assert "reslin__DEPL" in fp.fieldevols_by_name
 
     depl_evol = fp.fieldevols_by_name["reslin__DEPL"]
@@ -63,8 +63,8 @@ def test_field():
     # depl2 = depl_evol.get_field_at_timestep(1, 1)
     # assert depl2.name == "reslin2__DEPL" 
 
-def test_field_add():
-    fp = medpro.MEDFilePost("./tests/examples/box_shell_beam_profile.rmed")
+def test_field_add(ex_dir):
+    fp = medpro.MEDFilePost(ex_dir / "box_shell_beam_profile.rmed")
     assert "reslin__DEPL" in fp.fieldevols_by_name
 
     depl_evol = fp.fieldevols_by_name["reslin__DEPL"]
@@ -85,8 +85,8 @@ def test_field_add():
     depl -= 3.15
     assert np.array_equal(depl2.to_numpy(), (depl + 3.15).to_numpy())
 
-def test_field_add_timesteps():
-    fp = medpro.MEDFilePost("./tests/examples/box_shell_beam_profile.rmed")
+def test_field_add_timesteps(ex_dir):
+    fp = medpro.MEDFilePost(ex_dir / "box_shell_beam_profile.rmed")
     assert "reslin__DEPL" in fp.fieldevols_by_name
 
     depl_evol = fp.fieldevols_by_name["reslin__DEPL"]
@@ -96,8 +96,8 @@ def test_field_add_timesteps():
 
     assert np.array_equal(depl.to_numpy() + depl2.to_numpy(), (depl + depl2).to_numpy())
 
-def test_extract_group():
-    fp = medpro.MEDFilePost("./tests/examples/box_shell_beam_profile.rmed")
+def test_extract_group(ex_dir):
+    fp = medpro.MEDFilePost(ex_dir / "box_shell_beam_profile.rmed")
     assert "reslin__DEPL" in fp.fieldevols_by_name
 
     depl_evol = fp.fieldevols_by_name["reslin__DEPL"]
