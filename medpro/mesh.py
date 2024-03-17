@@ -109,8 +109,13 @@ class MEDMesh:
         return rfn.unstructured_to_structured(coords, names = self.components, copy = False)
 
     def get_group_by_name(self, group_name: str) -> MEDGroup:
-        ids: mc.DataArrayInt = self.mesh_file.getGroupArr(0, group_name, False)
-        labels: mc.DataArrayInt = self.mesh_file.getGroupArr(0, group_name, True)
+        group_levels = self.mesh_file.getGrpNonEmptyLevelsExt(group_name)
+        if len(group_levels) != 1:
+            raise NotImplementedError(f"Group {group_name=} defined on more than one level {group_levels=}, not yet coded and tested")
+        
+        group_level = group_levels[0]        
+        ids: mc.DataArrayInt = self.mesh_file.getGroupArr(group_level, group_name, False)
+        labels: mc.DataArrayInt = self.mesh_file.getGroupArr(group_level, group_name, True)
         return MEDGroup(self, ids, labels)
 
     def get_cell_ids_in_boundingbox(
