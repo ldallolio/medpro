@@ -53,24 +53,16 @@ def test_add_field_new_write(ex_dir):
 
     depl_evol = fp.fieldevols_by_name["reslin__DEPL"]
 
-    fpnew = medpro.MEDFilePost()
-    mesh = next(iter(fp.meshes_by_name.values()))
-    fpnew.add_mesh(mesh)
-
-    fields_data = fp.file_data.getFields()
-    print(f"{fields_data.getPfls()=}")
-    print(f"{fields_data.getPflsReallyUsed()=}")
-    print(f"{fields_data.getPflsReallyUsedMulti()=}")
 
     depl = depl_evol.get_field_at_timestep(1, 1)
     depl2 = depl * 2
     depl2.set_timestamp(2, 2, depl.timestamp.time)
     depl_evol.add_field(depl2)
-    fpnew.add_fieldevol(depl_evol)
 
-    print(f"{fields_data.getPfls()=}")
-    print(f"{fields_data.getPflsReallyUsed()=}")
-    print(f"{fields_data.getPflsReallyUsedMulti()=}")    
+    fpnew = medpro.MEDFilePost()
+    mesh = next(iter(fp.meshes_by_name.values()))
+    fpnew.add_mesh(mesh)    
+    fpnew.add_fieldevol(depl_evol)
 
     with tempfile.TemporaryDirectory() as tempdir:
         tmpfilepath = os.path.join(tempdir, "new.rmed")
@@ -82,16 +74,16 @@ def test_beam_floor(ex_dir):
 
     depl_evol = fp.fieldevols_by_name["resuelemDEPL"]
 
-    fpnew = medpro.MEDFilePost()
-    mesh = next(iter(fp.meshes_by_name.values()))
-    fpnew.add_mesh(mesh)
-
     depl1 = depl_evol.get_field_at_timestep(5, 5)
     depl2 = depl_evol.get_field_at_timestep(9, 9)
     deplsum = depl1+depl2
     deplsum.name = depl1.name
     deplsum.set_timestamp(12, 12, depl1.timestamp.time)    
     depl_evol.add_field(deplsum)
+
+    fpnew = medpro.MEDFilePost()
+    mesh = next(iter(fp.meshes_by_name.values()))
+    fpnew.add_mesh(mesh)    
     fpnew.add_fieldevol(depl_evol)
 
     with tempfile.TemporaryDirectory() as tempdir:
