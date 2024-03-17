@@ -105,6 +105,7 @@ class MEDFilePost:
     def write(self, output_file_name: str) -> None:
         self.check()
         if sys.platform == "win32":
+            # write33 raises mc.InterpKernelException on windows
             self.file_data.write(output_file_name, 2)
         else:
             self.file_data.write33(output_file_name, 2)

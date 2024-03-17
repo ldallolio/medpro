@@ -426,33 +426,14 @@ class MEDFieldEvol:
             raise ValueError(
                 f"Timestamp {med_field.timestamp} already present in field_evol"
             )
-
-        # print(f"{med_field.field_double.getName()=}")
-        # print(f"{med_field.field_double.getArray().getName()=}")
-        # print(f"{self.mesh.mesh_file.getName()=}")
-        # print(f"{med_field.profile.node_ids_array.getName()=}")
-        # print(f"{med_field.field_double.getName()=}")
-        # print(f"{self.file_field_multits.getPfls()=}")
-        # print(f"{self.file_field_multits.getPflsReallyUsed()=}")
-        # print(f"{self.file_field_multits.getPflsReallyUsedMulti()=}")
-        # print(f"{med_field.field_double.getMesh().getMeshDimension()=}")
-        # print(f"{self.mesh.mesh_file.getMeshDimension()=}")
         self.file_field_multits.appendFieldProfile(
             med_field.field_double,
             self.mesh.mesh_file,
             med_field.field_relative_dim,
             med_field.profile.node_ids_array,
         )
-        self.file_field_multits.checkGlobsCoherency()
-        #self.file_field_multits.appendProfile(med_field.profile.node_ids_array)
-        # print(f"{med_field.field_double.getName()=}")
-        # print(f"{med_field.field_double.getArray().getName()=}")
-        # print(f"{self.mesh.mesh_file.getName()=}")
-        # print(f"{med_field.profile.node_ids_array.getName()=}")
-        # print(f"{med_field.field_double.getName()=}")
-        # print(f"{self.file_field_multits.getPfls()=}")
-        # print(f"{self.file_field_multits.getPflsReallyUsed()=}")
-        # print(f"{self.file_field_multits.getPflsReallyUsedMulti()=}")       
+        self.file_field_multits.zipPflsNames()
+        self.file_field_multits.checkGlobsCoherency() 
 
     @property
     def field_by_timestep(self) -> Dict[TimeStamp, MEDField]:
